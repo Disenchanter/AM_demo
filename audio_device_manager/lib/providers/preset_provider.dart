@@ -32,9 +32,7 @@ class PresetProvider with ChangeNotifier {
 
     final success = await _presetApiService.createPreset(token, preset);
     
-    if (success) {
-      await loadPresets(token);
-    } else {
+    if (!success) {
       _errorMessage = "Failed to create preset";
     }
 
@@ -54,6 +52,19 @@ class PresetProvider with ChangeNotifier {
 
     _setLoading(false);
     return success;
+  }
+
+  Future<void> refreshPresets(String token) async {
+    _setLoading(true);
+    _errorMessage = "";
+
+    try {
+      _presets = await _presetApiService.getPresets(token);
+    } catch (e) {
+      _errorMessage = "刷新预设列表失败: $e";
+    }
+
+    _setLoading(false);
   }
 
   void _setLoading(bool loading) {

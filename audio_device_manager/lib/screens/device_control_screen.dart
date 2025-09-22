@@ -4,8 +4,106 @@ import "../providers/device_provider.dart";
 import "../providers/auth_provider.dart";
 import "../models/models.dart";
 
-class DeviceControlScreen extends StatelessWidget {
+class DeviceControlScreen extends StatefulWidget {
   const DeviceControlScreen({super.key});
+
+  @override
+  State<DeviceControlScreen> createState() => _DeviceControlScreenState();
+}
+
+class _DeviceControlScreenState extends State<DeviceControlScreen> {
+  Future<void> _saveCurrentDeviceSettings(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final deviceProvider = Provider.of<DeviceProvider>(context, listen: false);
+    
+    final selectedDevice = deviceProvider.selectedDevice;
+    if (selectedDevice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No device selected"),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 验证必要的数据
+      if (authProvider.token == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Authentication token missing"),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (selectedDevice.name.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Device name is empty"),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      
+      final success = await deviceProvider.updateDevice(authProvider.token!, selectedDevice);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success ? "设置保存成功" : "保存设置失败"),
+            duration: Duration(milliseconds: success ? 1500 : 2000),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error in _saveCurrentDeviceSettings: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("保存出错: ${e.toString()}"),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _refreshDeviceData(BuildContext context) async {
+    final deviceProvider = Provider.of<DeviceProvider>(context, listen: false);
+    
+    await deviceProvider.refreshDevices();
+    
+    if (mounted && deviceProvider.errorMessage.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(deviceProvider.errorMessage),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("设备数据刷新完成"),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,12 +149,9 @@ class DeviceControlScreen extends StatelessWidget {
                 Slider(
                   value: selectedDevice.volume,
                   onChanged: (value) {
-                    deviceProvider.updateSelectedDeviceVolume(value);
-                  },
-                  onChangeEnd: (value) {
-                    final token = authProvider.token;
-                    if (token != null) {
-                      deviceProvider.updateDevice(token, selectedDevice.copyWith(volume: value));
+                    final currentDevice = deviceProvider.selectedDevice;
+                    if (currentDevice != null) {
+                      deviceProvider.updateSelectedDeviceVolume(value);
                     }
                   },
                 ),
@@ -72,19 +167,13 @@ class DeviceControlScreen extends StatelessWidget {
                         max: 10.0,
                         divisions: 200,
                         onChanged: (value) {
-                          final newFreqs = List<double>.from(selectedDevice.eqSettings.frequencies);
-                          newFreqs[index] = value;
-                          deviceProvider.updateSelectedDeviceEQ(
-                            EQSettings(frequencies: newFreqs)
-                          );
-                        },
-                        onChangeEnd: (value) {
-                          final token = authProvider.token;
-                          if (token != null) {
-                            final newFreqs = List<double>.from(selectedDevice.eqSettings.frequencies);
+                          final currentDevice = deviceProvider.selectedDevice;
+                          if (currentDevice != null) {
+                            final newFreqs = List<double>.from(currentDevice.eqSettings.frequencies);
                             newFreqs[index] = value;
-                            final newEQ = EQSettings(frequencies: newFreqs);
-                            deviceProvider.updateDevice(token, selectedDevice.copyWith(eqSettings: newEQ));
+                            deviceProvider.updateSelectedDeviceEQ(
+                              EQSettings(frequencies: newFreqs)
+                            );
                           }
                         },
                       ),
@@ -96,14 +185,37 @@ class DeviceControlScreen extends StatelessWidget {
                 Slider(
                   value: selectedDevice.reverb,
                   onChanged: (value) {
-                    deviceProvider.updateSelectedDeviceReverb(value);
-                  },
-                  onChangeEnd: (value) {
-                    final token = authProvider.token;
-                    if (token != null) {
-                      deviceProvider.updateDevice(token, selectedDevice.copyWith(reverb: value));
+                    final currentDevice = deviceProvider.selectedDevice;
+                    if (currentDevice != null) {
+                      deviceProvider.updateSelectedDeviceReverb(value);
                     }
                   },
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => _refreshDeviceData(context),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('刷新数据'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: deviceProvider.isLoading ? null : () => _saveCurrentDeviceSettings(context),
+                      icon: const Icon(Icons.save),
+                      label: const Text('保存设置'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

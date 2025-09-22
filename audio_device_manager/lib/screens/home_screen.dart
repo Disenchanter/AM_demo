@@ -24,7 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    // 延迟数据初始化，避免在build期间调用setState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
+    });
   }
 
   Future<void> _initializeData() async {
@@ -56,22 +59,42 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           Consumer<AuthProvider>(
             builder: (context, authProvider, child) {
-              return PopupMenuButton(
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    child: Text("User: ${authProvider.currentUser?.username ?? "Unknown"}"),
-                    onTap: null,
-                  ),
-                  const PopupMenuItem(
-                    value: "logout",
-                    child: Text("Logout"),
+              final user = authProvider.currentUser;
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 用户信息显示
+                  if (user != null) 
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            user.username,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            "已登录",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // 登出按钮
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    tooltip: "登出",
+                    onPressed: _handleLogout,
                   ),
                 ],
-                onSelected: (value) {
-                  if (value == "logout") {
-                    _handleLogout();
-                  }
-                },
               );
             },
           ),

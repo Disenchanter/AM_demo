@@ -38,12 +38,28 @@ class AuthProvider with ChangeNotifier {
     
     if (result["success"]) {
       final data = result["data"];
-      _token = data["idToken"];
-      _currentUser = User(
-        id: data["userId"] ?? "",
-        username: username,
-        email: data["email"] ?? "",
-      );
+      print("AuthProvider: Login data structure: $data");
+      print("AuthProvider: data keys: ${data?.keys}");
+      
+      final tokens = data?["tokens"];
+      if (tokens != null) {
+        _token = tokens["idToken"];  // 使用idToken进行API授权
+      } else {
+        print("Warning: No tokens found in login response");
+        _token = null;
+      }
+      
+      final user = data?["user"];
+      if (user != null) {
+        _currentUser = User(
+          id: user["id"] ?? "",
+          username: user["username"] ?? username,
+          email: user["email"] ?? "",
+        );
+      } else {
+        print("Warning: No user found in login response");
+        _currentUser = null;
+      }
 
       await _saveAuthData();
       _setLoading(false);
