@@ -1,0 +1,57 @@
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "audio-device-backend"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = false
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+s3_prefix = "audio-device-backend"
+region = "us-east-1"
+image_repositories = []
+parameter_overrides = "Environment=\"dev\" CognitoUserPoolName=\"AudioDeviceUsers\""
+
+[default.package.parameters]
+resolve_s3 = true
+
+[default.sync.parameters]
+watch = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
+
+[dev]
+[dev.global.parameters]
+stack_name = "audio-device-backend-dev"
+
+[dev.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+s3_prefix = "audio-device-backend-dev"
+region = "us-east-1"
+parameter_overrides = "Environment=dev CognitoUserPoolName=AudioDeviceUsers-Dev"
+
+[prod]
+[prod.global.parameters]
+stack_name = "audio-device-backend-prod"
+
+[prod.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+s3_prefix = "audio-device-backend-prod"
+region = "us-east-1"
+parameter_overrides = "Environment=prod CognitoUserPoolName=AudioDeviceUsers-Prod"

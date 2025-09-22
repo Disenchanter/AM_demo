@@ -1,0 +1,393 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Audio Device Management Backend - Single Table Architecture'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: 环境名称
+
+  CognitoUserPoolName:
+    Type: String
+    Default: AudioDeviceUsers
+    Description: Cognito用户池名称
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        AUDIO_MANAGEMENT_TABLE: !Ref AudioManagementTable
+        ENVIRONMENT: !Ref Environment
+        NODE_OPTIONS: "--enable-source-maps"
+
+Resources:
+  # Cognito用户池
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${CognitoUserPoolName}-${Environment}'
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+        - Name: role
+          AttributeDataType: String
+          DeveloperOnlyAttribute: false
+          Mutable: true
+      UserPoolTags:
+        Environment: !Ref Environment
+        Project: AudioDeviceManagement
+
+  # Cognito用户池客户端
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub 'AudioDeviceApp-${Environment}'
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      RefreshTokenValidity: 30
+
+  # Admin用户组
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref UserPool
+      GroupName: admin
+      Description: 管理员用户组
+      Precedence: 1
+
+  # 普通用户组
+  UserGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref UserPool
+      GroupName: user
+      Description: 普通用户组
+      Precedence: 2
+
+  # DynamoDB - 统一管理表 (Single Table Design)
+  AudioManagementTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'AudioManagement-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: AudioDeviceManagement
+
+  # API Gateway
+  AudioDeviceApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Name: !Sub 'AudioDeviceAPI-${Environment}'
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+            Identity:
+              Header: Authorization
+
+  # Lambda函数 - 获取设备列表
+  GetDevicesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'GetDevices-${Environment}'
+      CodeUri: ./
+      Handler: lambda/devices/get-devices.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref AudioManagementTable
+      Events:
+        GetDevices:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/devices
+            Method: GET
+
+  # Lambda函数 - 更新设备状态
+  UpdateDeviceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'UpdateDevice-${Environment}'
+      CodeUri: ./
+      Handler: lambda/devices/update-device.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AudioManagementTable
+      Events:
+        UpdateDevice:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/devices/{device_id}
+            Method: PUT
+
+  # Lambda函数 - 获取预设列表
+  GetPresetsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'GetPresets-${Environment}'
+      CodeUri: ./
+      Handler: lambda/presets/get-presets.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref AudioManagementTable
+      Events:
+        GetPresets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/devices/{device_id}/presets
+            Method: GET
+        GetAllPresets:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/presets
+            Method: GET
+
+  # Lambda函数 - 创建预设
+  CreatePresetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'CreatePreset-${Environment}'
+      CodeUri: ./
+      Handler: lambda/presets/create-preset.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AudioManagementTable
+      Events:
+        CreatePreset:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/devices/{device_id}/presets
+            Method: POST
+
+  # Lambda函数 - 应用预设
+  ApplyPresetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'ApplyPreset-${Environment}'
+      CodeUri: ./
+      Handler: lambda/presets/apply-preset.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AudioManagementTable
+      Events:
+        ApplyPreset:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/devices/{device_id}/apply-preset
+            Method: POST
+
+  # Lambda函数 - 用户注册
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'Register-${Environment}'
+      CodeUri: ./
+      Handler: lambda/users/register.handler
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AudioManagementTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'cognito-idp:AdminCreateUser'
+                - 'cognito-idp:AdminAddUserToGroup'
+                - 'cognito-idp:AdminSetUserPassword'
+                - 'cognito-idp:AdminDeleteUser'
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Register:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/auth/register
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+  # Lambda函数 - 用户登录
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'Login-${Environment}'
+      CodeUri: ./
+      Handler: lambda/users/login.handler
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AudioManagementTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'cognito-idp:InitiateAuth'
+                - 'cognito-idp:AdminGetUser'
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Login:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/auth/login
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+  # Lambda函数 - 获取用户信息
+  GetProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'GetProfile-${Environment}'
+      CodeUri: ./
+      Handler: lambda/users/get-profile.handler
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref AudioManagementTable
+      Events:
+        GetCurrentProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/users/profile
+            Method: GET
+        GetAuthProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/auth/profile
+            Method: GET
+        GetUserProfile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AudioDeviceApi
+            Path: /api/users/{user_id}
+            Method: GET
+
+  # CloudWatch日志组
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${AudioDeviceApi}'
+      RetentionInDays: 14
+
+Outputs:
+  # API相关输出
+  AudioDeviceApiUrl:
+    Description: 'Audio Device Management API Gateway URL'
+    Value: !Sub 'https://${AudioDeviceApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+
+  AudioDeviceApiId:
+    Description: 'API Gateway ID'
+    Value: !Ref AudioDeviceApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiId'
+
+  # Cognito相关输出
+  UserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  UserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+
+  CognitoRegion:
+    Description: 'Cognito Region'
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub '${AWS::StackName}-CognitoRegion'
+
+  # DynamoDB相关输出
+  AudioManagementTableName:
+    Description: 'DynamoDB Audio Management Table Name'
+    Value: !Ref AudioManagementTable
+    Export:
+      Name: !Sub '${AWS::StackName}-AudioManagementTable'
+
+  # 环境信息
+  Environment:
+    Description: 'Deployment Environment'
+    Value: !Ref Environment
+    Export:
+      Name: !Sub '${AWS::StackName}-Environment'

@@ -1,0 +1,45 @@
+{
+  "name": "audio-device-backend",
+  "version": "1.0.0",
+  "description": "AWS Serverless backend for Audio Device Manager",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "validate": "echo 'Validating Lambda functions...' && node scripts/validate-functions.js",
+    "lint": "eslint lambda/ shared/ --fix",
+    "pre-deploy": "node scripts/pre-deploy-check.js",
+    "deploy": "npm run pre-deploy && sam build --skip-pull-image && sam deploy --guided",
+    "deploy:dev": "npm run pre-deploy && sam build --skip-pull-image && sam deploy --config-env dev --no-confirm-changeset",
+    "deploy:prod": "npm run pre-deploy && sam build --skip-pull-image && sam deploy --config-env prod --no-confirm-changeset",
+    "local": "sam local start-api",
+    "setup": "node scripts/setup-env.js",
+    "seed": "node scripts/seed-data.js",
+    "users:create": "node scripts/manage-users.js",
+    "users:complete": "node scripts/manage-users-complete.js create",
+    "users:stats": "node scripts/manage-users-complete.js stats",
+    "data:create": "node scripts/manage-data.js create",
+    "data:clear": "node scripts/manage-data.js clear",
+    "data:stats": "node scripts/manage-data.js stats",
+    "test:permissions": "node scripts/test-permissions.js",
+    "deploy:ignore": "node scripts/ignore-errors.js sam deploy --config-env dev",
+    "build:ignore": "node scripts/ignore-errors.js sam build",
+    "validate:ignore": "node scripts/ignore-errors.js sam validate"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "aws-lambda-test-utils": "^1.3.0",
+    "eslint": "^8.54.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.450.0",
+    "@aws-sdk/client-dynamodb": "^3.450.0",
+    "@aws-sdk/lib-dynamodb": "^3.450.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.1"
+  },
+  "keywords": ["aws", "serverless", "lambda", "audio", "device-management"],
+  "author": "Your Name",
+  "license": "MIT"
+}

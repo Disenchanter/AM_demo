@@ -1,0 +1,435 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Audio Device Management Backend - Single Table Architecture
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - staging
+    - prod
+    Description: "\u73AF\u5883\u540D\u79F0"
+  CognitoUserPoolName:
+    Type: String
+    Default: AudioDeviceUsers
+    Description: "Cognito\u7528\u6237\u6C60\u540D\u79F0"
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        AUDIO_MANAGEMENT_TABLE:
+          Ref: AudioManagementTable
+        ENVIRONMENT:
+          Ref: Environment
+        NODE_OPTIONS: --enable-source-maps
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName:
+        Fn::Sub: ${CognitoUserPoolName}-${Environment}
+      UsernameAttributes:
+      - email
+      AutoVerifiedAttributes:
+      - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+      - Name: email
+        AttributeDataType: String
+        Required: true
+      - Name: role
+        AttributeDataType: String
+        DeveloperOnlyAttribute: false
+        Mutable: true
+      UserPoolTags:
+        Environment:
+          Ref: Environment
+        Project: AudioDeviceManagement
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId:
+        Ref: UserPool
+      ClientName:
+        Fn::Sub: AudioDeviceApp-${Environment}
+      GenerateSecret: false
+      ExplicitAuthFlows:
+      - ALLOW_USER_PASSWORD_AUTH
+      - ALLOW_REFRESH_TOKEN_AUTH
+      - ALLOW_USER_SRP_AUTH
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      RefreshTokenValidity: 30
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId:
+        Ref: UserPool
+      GroupName: admin
+      Description: "\u7BA1\u7406\u5458\u7528\u6237\u7EC4"
+      Precedence: 1
+  UserGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId:
+        Ref: UserPool
+      GroupName: user
+      Description: "\u666E\u901A\u7528\u6237\u7EC4"
+      Precedence: 2
+  AudioManagementTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: AudioManagement-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: PK
+        AttributeType: S
+      - AttributeName: SK
+        AttributeType: S
+      - AttributeName: GSI1PK
+        AttributeType: S
+      - AttributeName: GSI1SK
+        AttributeType: S
+      KeySchema:
+      - AttributeName: PK
+        KeyType: HASH
+      - AttributeName: SK
+        KeyType: RANGE
+      GlobalSecondaryIndexes:
+      - IndexName: GSI1
+        KeySchema:
+        - AttributeName: GSI1PK
+          KeyType: HASH
+        - AttributeName: GSI1SK
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+      - Key: Environment
+        Value:
+          Ref: Environment
+      - Key: Project
+        Value: AudioDeviceManagement
+  AudioDeviceApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName:
+        Ref: Environment
+      Name:
+        Fn::Sub: AudioDeviceAPI-${Environment}
+      Cors:
+        AllowMethods: '''GET,POST,PUT,DELETE,OPTIONS'''
+        AllowHeaders: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key'''
+        AllowOrigin: '''*'''
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn:
+              Fn::GetAtt:
+              - UserPool
+              - Arn
+            Identity:
+              Header: Authorization
+  GetDevicesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: GetDevices-${Environment}
+      CodeUri: GetDevicesFunction
+      Handler: lambda/devices/get-devices.handler
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      Events:
+        GetDevices:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/devices
+            Method: GET
+    Metadata:
+      SamResourceId: GetDevicesFunction
+  UpdateDeviceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: UpdateDevice-${Environment}
+      CodeUri: UpdateDeviceFunction
+      Handler: lambda/devices/update-device.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      Events:
+        UpdateDevice:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/devices/{device_id}
+            Method: PUT
+    Metadata:
+      SamResourceId: UpdateDeviceFunction
+  GetPresetsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: GetPresets-${Environment}
+      CodeUri: GetPresetsFunction
+      Handler: lambda/presets/get-presets.handler
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      Events:
+        GetPresets:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/devices/{device_id}/presets
+            Method: GET
+        GetAllPresets:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/presets
+            Method: GET
+    Metadata:
+      SamResourceId: GetPresetsFunction
+  CreatePresetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: CreatePreset-${Environment}
+      CodeUri: CreatePresetFunction
+      Handler: lambda/presets/create-preset.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      Events:
+        CreatePreset:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/devices/{device_id}/presets
+            Method: POST
+    Metadata:
+      SamResourceId: CreatePresetFunction
+  ApplyPresetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ApplyPreset-${Environment}
+      CodeUri: ApplyPresetFunction
+      Handler: lambda/presets/apply-preset.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      Events:
+        ApplyPreset:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/devices/{device_id}/apply-preset
+            Method: POST
+    Metadata:
+      SamResourceId: ApplyPresetFunction
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: Register-${Environment}
+      CodeUri: RegisterFunction
+      Handler: lambda/users/register.handler
+      Environment:
+        Variables:
+          USER_POOL_ID:
+            Ref: UserPool
+          USER_POOL_CLIENT_ID:
+            Ref: UserPoolClient
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:AdminCreateUser
+          - cognito-idp:AdminAddUserToGroup
+          - cognito-idp:AdminSetUserPassword
+          - cognito-idp:AdminDeleteUser
+          Resource:
+            Fn::GetAtt:
+            - UserPool
+            - Arn
+      Events:
+        Register:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/auth/register
+            Method: POST
+            Auth:
+              Authorizer: NONE
+    Metadata:
+      SamResourceId: RegisterFunction
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: Login-${Environment}
+      CodeUri: LoginFunction
+      Handler: lambda/users/login.handler
+      Environment:
+        Variables:
+          USER_POOL_ID:
+            Ref: UserPool
+          USER_POOL_CLIENT_ID:
+            Ref: UserPoolClient
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:InitiateAuth
+          - cognito-idp:AdminGetUser
+          Resource:
+            Fn::GetAtt:
+            - UserPool
+            - Arn
+      Events:
+        Login:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/auth/login
+            Method: POST
+            Auth:
+              Authorizer: NONE
+    Metadata:
+      SamResourceId: LoginFunction
+  GetProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: GetProfile-${Environment}
+      CodeUri: GetProfileFunction
+      Handler: lambda/users/get-profile.handler
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: AudioManagementTable
+      Events:
+        GetCurrentProfile:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/users/profile
+            Method: GET
+        GetAuthProfile:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/auth/profile
+            Method: GET
+        GetUserProfile:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: AudioDeviceApi
+            Path: /api/users/{user_id}
+            Method: GET
+    Metadata:
+      SamResourceId: GetProfileFunction
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/apigateway/${AudioDeviceApi}
+      RetentionInDays: 14
+Outputs:
+  AudioDeviceApiUrl:
+    Description: Audio Device Management API Gateway URL
+    Value:
+      Fn::Sub: https://${AudioDeviceApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ApiUrl
+  AudioDeviceApiId:
+    Description: API Gateway ID
+    Value:
+      Ref: AudioDeviceApi
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ApiId
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value:
+      Ref: UserPool
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-UserPoolId
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value:
+      Ref: UserPoolClient
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-UserPoolClientId
+  CognitoRegion:
+    Description: Cognito Region
+    Value:
+      Ref: AWS::Region
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-CognitoRegion
+  AudioManagementTableName:
+    Description: DynamoDB Audio Management Table Name
+    Value:
+      Ref: AudioManagementTable
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-AudioManagementTable
+  Environment:
+    Description: Deployment Environment
+    Value:
+      Ref: Environment
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-Environment
