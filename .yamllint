@@ -1,0 +1,28 @@
+# YAML Lint 配置文件
+# 用于忽略 AWS SAM 构建文件的 lint 错误
+
+rules:
+  # 关闭行长度检查（AWS SAM 模板通常很长）
+  line-length: disable
+  
+  # 关闭缩进检查（SAM 生成的文件可能格式不一致）
+  indentation: disable
+  
+  # 关闭注释检查
+  comments: disable
+  
+  # 关闭文档开始检查
+  document-start: disable
+  
+  # 关闭键值对检查
+  key-value-consistent: disable
+  
+  # 关闭空行检查
+  empty-lines: disable
+
+# 忽略特定文件和目录
+ignore: |
+  .aws-sam/build/
+  **/build/
+  **/dist/
+  **/.aws-sam/build/**
