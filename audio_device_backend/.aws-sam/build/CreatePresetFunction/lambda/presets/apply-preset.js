@@ -69,7 +69,7 @@ exports.handler = async (event, context) => {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: { 
                 PK: `DEVICE#${device_id}`,
-                SK: 'METADATA'
+                SK: 'DEVICE'
             },
             UpdateExpression: 'SET current_volume = :volume, current_eq = :eq, current_reverb = :reverb, updated_at = :updated_at',
             ExpressionAttributeValues: {
@@ -120,7 +120,7 @@ async function getDevice(deviceId) {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: { 
                 PK: `DEVICE#${deviceId}`,
-                SK: 'METADATA'
+                SK: 'DEVICE'
             }
         };
 
@@ -144,7 +144,7 @@ async function getPreset(presetId) {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: { 
                 PK: `PRESET#${presetId}`,
-                SK: 'METADATA'
+                SK: 'PRESET'
             }
         };
 

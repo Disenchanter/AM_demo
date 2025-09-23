@@ -107,17 +107,15 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Device Control')),
-      body: Consumer2<DeviceProvider, AuthProvider>(
-        builder: (context, deviceProvider, authProvider, child) {
-          if (deviceProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Consumer2<DeviceProvider, AuthProvider>(
+      builder: (context, deviceProvider, authProvider, child) {
+        if (deviceProvider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (deviceProvider.devices.isEmpty) {
-            return const Center(child: Text("No devices found"));
-          }
+        if (deviceProvider.devices.isEmpty) {
+          return const Center(child: Text("No devices found"));
+        }
 
           final selectedDevice = deviceProvider.selectedDevice;
           if (selectedDevice == null) {
@@ -129,6 +127,37 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Device Control", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => _refreshDeviceData(context),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('刷新数据'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: deviceProvider.isLoading ? null : () => _saveCurrentDeviceSettings(context),
+                          icon: const Icon(Icons.save),
+                          label: const Text('保存设置'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 DropdownButton<Device>(
                   value: selectedDevice,
                   isExpanded: true,
@@ -191,37 +220,10 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => _refreshDeviceData(context),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('刷新数据'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: deviceProvider.isLoading ? null : () => _saveCurrentDeviceSettings(context),
-                      icon: const Icon(Icons.save),
-                      label: const Text('保存设置'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           );
         },
-      ),
-    );
+      );
   }
 }

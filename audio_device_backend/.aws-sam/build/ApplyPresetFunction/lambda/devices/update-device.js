@@ -35,19 +35,20 @@ exports.handler = async (event, context) => {
             return createResponse(403, { error: '没有权限操作此设备' });
         }
 
-        // 准备更新数据 - 使用AudioProfile更新
+        // 准备更新数据 - 更新state对象中的字段
         const updates = {};
         const updateExpressions = [];
         const expressionAttributeValues = {};
+        const expressionAttributeNames = {};
 
         // 音量更新
         if (typeof body.volume === 'number') {
             if (body.volume < 0 || body.volume > 1) {
                 return createResponse(400, { error: '音量值必须在0到1之间' });
             }
-            updates.current_volume = body.volume;
-            updateExpressions.push('current_volume = :volume');
+            updateExpressions.push('#state.volume = :volume');
             expressionAttributeValues[':volume'] = body.volume;
+            expressionAttributeNames['#state'] = 'state';
         }
 
         // EQ设置更新
@@ -62,9 +63,9 @@ exports.handler = async (event, context) => {
                 }
             }
             
-            updates.current_eq = body.eq;
-            updateExpressions.push('current_eq = :eq');
+            updateExpressions.push('#state.eq = :eq');
             expressionAttributeValues[':eq'] = body.eq;
+            expressionAttributeNames['#state'] = 'state';
         }
 
         // 混响更新
@@ -72,9 +73,9 @@ exports.handler = async (event, context) => {
             if (body.reverb < 0 || body.reverb > 1) {
                 return createResponse(400, { error: '混响值必须在0到1之间' });
             }
-            updates.current_reverb = body.reverb;
-            updateExpressions.push('current_reverb = :reverb');
+            updateExpressions.push('#state.reverb = :reverb');
             expressionAttributeValues[':reverb'] = body.reverb;
+            expressionAttributeNames['#state'] = 'state';
         }
 
         // 设备名称更新（仅设备拥有者和管理员）
@@ -82,7 +83,6 @@ exports.handler = async (event, context) => {
             if (body.deviceName.length > 50) {
                 return createResponse(400, { error: '设备名称不能超过50个字符' });
             }
-            updates.device_name = body.deviceName;
             updateExpressions.push('device_name = :name');
             expressionAttributeValues[':name'] = body.deviceName;
         }
@@ -91,19 +91,24 @@ exports.handler = async (event, context) => {
             return createResponse(400, { error: '没有提供有效的更新数据' });
         }
 
-        // 添加更新时间
+        // 添加更新时间和state同步版本
         updateExpressions.push('updated_at = :updated_at');
+        updateExpressions.push('#state.updated_at = :updated_at');
+        updateExpressions.push('#state.sync_version = #state.sync_version + :one');
         expressionAttributeValues[':updated_at'] = new Date().toISOString();
+        expressionAttributeValues[':one'] = 1;
+        expressionAttributeNames['#state'] = 'state';
 
         // 执行更新 - 使用单表设计的键
         const updateParams = {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: { 
                 PK: `DEVICE#${device_id}`,
-                SK: 'METADATA'
+                SK: 'DEVICE'
             },
             UpdateExpression: 'SET ' + updateExpressions.join(', '),
             ExpressionAttributeValues: expressionAttributeValues,
+            ExpressionAttributeNames: expressionAttributeNames,
             ReturnValues: 'ALL_NEW'
         };
 
@@ -136,7 +141,7 @@ async function getDevice(deviceId) {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: { 
                 PK: `DEVICE#${deviceId}`,
-                SK: 'METADATA'
+                SK: 'DEVICE'
             }
         };
 

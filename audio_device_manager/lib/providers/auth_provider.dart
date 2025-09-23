@@ -71,11 +71,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> register(String username, String email, String password) async {
+  Future<bool> register(String username, String email, String password, String fullName) async {
     _setLoading(true);
     _errorMessage = "";
 
-    final result = await _authApiService.register(username, email, password);
+    final result = await _authApiService.register(username, email, password, fullName);
     
     if (result["success"]) {
       _setLoading(false);

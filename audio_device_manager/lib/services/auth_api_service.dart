@@ -42,31 +42,42 @@ class AuthApiService {
     }
   }
 
-  Future<Map<String, dynamic>> register(String username, String email, String password) async {
+  Future<Map<String, dynamic>> register(String username, String email, String password, String fullName) async {
     try {
+      print("AuthApiService: Attempting register for email: $email, username: $username, fullName: $fullName");
+      final requestBody = {
+        "email": email,
+        "password": password,
+        "fullName": fullName,  // 后端期望fullName字段，用户的真实姓名
+        "username": username.isNotEmpty ? username : email.split('@')[0], // username为可选字段，默认使用email前缀
+      };
+      print("AuthApiService: Register request body: ${jsonEncode(requestBody)}");
+
       final response = await http.post(
         Uri.parse("${ApiConfig.baseUrl}${ApiConfig.authEndpoint}/register"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "username": username,
-          "email": email,
-          "password": password,
-        }),
+        body: jsonEncode(requestBody),
       );
 
-      if (response.statusCode == 200) {
+      print("AuthApiService: Register response status: ${response.statusCode}");
+      print("AuthApiService: Register response body: ${response.body}");
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return {
           "success": true,
           "data": data,
         };
       } else {
+        final errorData = jsonDecode(response.body);
         return {
           "success": false,
           "error": "Registration failed: ${response.statusCode}",
+          "details": errorData,
         };
       }
     } catch (e) {
+      print("AuthApiService: Register error: $e");
       return {
         "success": false,
         "error": "Network error: $e",

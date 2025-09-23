@@ -29,7 +29,7 @@ class PresetScreen extends StatelessWidget {
                       ElevatedButton.icon(
                         onPressed: presetProvider.isLoading ? null : () => _refreshPresets(context),
                         icon: const Icon(Icons.refresh),
-                        label: const Text("刷新"),
+                        label: const Text("刷新数据"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,

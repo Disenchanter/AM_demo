@@ -223,7 +223,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref AudioDeviceApi
-            Path: /api/devices/{device_id}/presets
+            Path: /api/presets
             Method: POST
 
   # Lambda函数 - 应用预设

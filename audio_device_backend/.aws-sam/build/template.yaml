@@ -237,7 +237,7 @@ Resources:
           Properties:
             RestApiId:
               Ref: AudioDeviceApi
-            Path: /api/devices/{device_id}/presets
+            Path: /api/presets
             Method: POST
     Metadata:
       SamResourceId: CreatePresetFunction

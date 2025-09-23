@@ -9,7 +9,7 @@
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, UpdateCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { CognitoIdentityProviderClient, InitiateAuthCommand, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 const User = require('../../shared/models/user');
 
@@ -209,7 +209,7 @@ async function createUserFromCognitoData(cognitoUser) {
     const user = new User(userData);
     
     // 保存到数据库
-    await dynamoDb.send(new UpdateCommand({
+    await dynamoDb.send(new PutCommand({
         TableName: process.env.AUDIO_MANAGEMENT_TABLE,
         Item: user.toDynamoItem()
     }));
