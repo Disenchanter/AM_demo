@@ -24,7 +24,7 @@ class Preset {
   });
 
   factory Preset.fromBackend(Map<String, dynamic> backendData) {
-    // 处理后端嵌套的 profile 结构
+  // Handle nested profile structure returned by the backend
     final profile = backendData["profile"] as Map<String, dynamic>?;
     
     return Preset(

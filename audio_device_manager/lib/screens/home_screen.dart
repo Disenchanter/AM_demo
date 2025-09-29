@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 延迟数据初始化，避免在build期间调用setState
+  // Delay initialization to avoid setState calls during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeData();
     });
@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 用户信息显示
+                  // Display user information
                   if (user != null) 
                     Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           Text(
-                            "已登录",
+                            "Signed in",
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -88,10 +88,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                  // 登出按钮
+                  // Logout button
                   IconButton(
                     icon: const Icon(Icons.logout),
-                    tooltip: "登出",
+                    tooltip: "Sign out",
                     onPressed: _handleLogout,
                   ),
                 ],

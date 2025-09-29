@@ -1,5 +1,5 @@
 /**
- * 创建新的音频预设
+ * Create a new audio preset.
  * POST /api/presets
  */
 
@@ -19,31 +19,31 @@ exports.handler = async (event, context) => {
 
         console.log('Create preset request body:', JSON.stringify(body));
 
-        // 验证必需字段
+        // Validate required fields
         if (!body.name || body.name.trim() === '') {
-            return createResponse(400, { error: '预设名称不能为空' });
+            return createResponse(400, { error: 'Preset name is required' });
         }
 
         if (typeof body.volume !== 'number' || body.volume < 0 || body.volume > 1) {
-            return createResponse(400, { error: '音量值必须在0到1之间' });
+            return createResponse(400, { error: 'Volume must be between 0 and 1' });
         }
 
         if (typeof body.reverb !== 'number' || body.reverb < 0 || body.reverb > 1) {
-            return createResponse(400, { error: '混响值必须在0到1之间' });
+            return createResponse(400, { error: 'Reverb must be between 0 and 1' });
         }
 
         if (!Array.isArray(body.eq) || body.eq.length !== 5) {
-            return createResponse(400, { error: 'EQ设置必须包含5个频段' });
+            return createResponse(400, { error: 'EQ settings must contain exactly 5 bands' });
         }
 
-        // 验证EQ值
+        // Validate each EQ band value
         for (let i = 0; i < body.eq.length; i++) {
             if (typeof body.eq[i] !== 'number' || body.eq[i] < -12 || body.eq[i] > 12) {
-                return createResponse(400, { error: `EQ频段${i + 1}值必须在-12到12之间` });
+                return createResponse(400, { error: `EQ band ${i + 1} must be between -12 and 12` });
             }
         }
 
-        // 创建预设实例 - 不依赖设备
+        // Build a preset payload (device agnostic)
         const presetData = {
             preset_name: body.name.trim(),
             description: body.description?.trim() || '',
@@ -54,36 +54,36 @@ exports.handler = async (event, context) => {
             },
             created_by: userInfo.userId,
             creator_role: userInfo.userRole,
-            is_public: body.is_public ?? false,  // 默认为私有预设
+            is_public: body.is_public ?? false,  // default to private preset
             category: body.category || 'custom'
         };
 
-        // 验证用户是否有权限创建公开预设
+        // Ensure the requester is allowed to publish presets publicly
         if (presetData.is_public && userInfo.userRole !== 'admin') {
             return createResponse(403, { 
-                error: '权限不足', 
-                message: '只有管理员可以创建公开预设' 
+                error: 'Insufficient permissions', 
+                message: 'Only administrators can create public presets.' 
             });
         }
 
         const preset = new Preset(presetData);
 
-        // 验证预设数据
+        // Validate preset details using the shared model
         const validation = preset.validate();
         if (!validation.isValid) {
             return createResponse(400, { 
-                error: '预设数据验证失败', 
+                error: 'Preset validation failed', 
                 details: validation.errors 
             });
         }
 
-        // 检查预设名称是否已存在（用户下不能重名）
+        // Ensure the preset name is unique for the owner
         const existingPreset = await findPresetByUserAndName(userInfo.userId, preset.preset_name);
         if (existingPreset) {
-            return createResponse(409, { error: '您已创建过同名预设' });
+            return createResponse(409, { error: 'You already created a preset with this name' });
         }
 
-        // 保存到DynamoDB - 使用单表设计
+        // Persist with the single-table DynamoDB design
         const putParams = {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Item: preset.toDynamoItem(),
@@ -96,7 +96,7 @@ exports.handler = async (event, context) => {
 
         return createResponse(201, {
             success: true,
-            message: '预设创建成功',
+            message: 'Preset created successfully',
             data: preset.toApiResponse()
         });
 
@@ -104,17 +104,17 @@ exports.handler = async (event, context) => {
         console.error('Error:', error);
         
         if (error.code === 'ConditionalCheckFailedException') {
-            return createResponse(409, { error: '预设ID已存在' });
+            return createResponse(409, { error: 'Preset ID already exists' });
         }
 
         return createResponse(500, { 
-            error: '创建预设失败',
+            error: 'Failed to create preset',
             details: error.message 
         });
     }
 };
 /**
- * 查找用户的同名预设 - 使用单表设计
+ * Locate an existing preset with the same name for the given user.
  */
 async function findPresetByUserAndName(userId, presetName) {
     try {
@@ -135,13 +135,13 @@ async function findPresetByUserAndName(userId, presetName) {
         return result.Items && result.Items.length > 0 ? result.Items[0] : null;
 
     } catch (error) {
-        console.error('查找用户预设失败:', error);
+        console.error('Failed to query presets for user:', error);
         return null;
     }
 }
 
 /**
- * 从事件中提取用户信息
+ * Extract identity details from the API Gateway event.
  */
 function getUserInfo(event) {
     const claims = event.requestContext?.authorizer?.claims || {};
@@ -154,7 +154,7 @@ function getUserInfo(event) {
 }
 
 /**
- * 创建标准化响应
+ * Helper to build consistent API Gateway responses.
  */
 function createResponse(statusCode, body) {
     return {

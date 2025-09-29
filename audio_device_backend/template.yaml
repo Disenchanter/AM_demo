@@ -7,12 +7,12 @@ Parameters:
     Type: String
     Default: dev
     AllowedValues: [dev, staging, prod]
-    Description: 环境名称
+    Description: Environment name
 
   CognitoUserPoolName:
     Type: String
     Default: AudioDeviceUsers
-    Description: Cognito用户池名称
+    Description: Cognito user pool name
 
 Globals:
   Function:
@@ -26,7 +26,7 @@ Globals:
         NODE_OPTIONS: "--enable-source-maps"
 
 Resources:
-  # Cognito用户池
+  # Cognito user pool
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -54,7 +54,7 @@ Resources:
         Environment: !Ref Environment
         Project: AudioDeviceManagement
 
-  # Cognito用户池客户端
+  # Cognito user pool client
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -73,25 +73,25 @@ Resources:
       IdTokenValidity: 24
       RefreshTokenValidity: 30
 
-  # Admin用户组
+  # Admin user group
   AdminGroup:
     Type: AWS::Cognito::UserPoolGroup
     Properties:
       UserPoolId: !Ref UserPool
       GroupName: admin
-      Description: 管理员用户组
+  Description: Administrator group
       Precedence: 1
 
-  # 普通用户组
+  # Standard user group
   UserGroup:
     Type: AWS::Cognito::UserPoolGroup
     Properties:
       UserPoolId: !Ref UserPool
       GroupName: user
-      Description: 普通用户组
+  Description: Standard user group
       Precedence: 2
 
-  # DynamoDB - 统一管理表 (Single Table Design)
+  # DynamoDB - unified management table (single-table design)
   AudioManagementTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -148,7 +148,7 @@ Resources:
             Identity:
               Header: Authorization
 
-  # Lambda函数 - 获取设备列表
+  # Lambda function - Get Devices
   GetDevicesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -166,7 +166,7 @@ Resources:
             Path: /api/devices
             Method: GET
 
-  # Lambda函数 - 更新设备状态
+  # Lambda function - Update Device
   UpdateDeviceFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -184,7 +184,7 @@ Resources:
             Path: /api/devices/{device_id}
             Method: PUT
 
-  # Lambda函数 - 获取预设列表
+  # Lambda function - Get Presets
   GetPresetsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -208,7 +208,7 @@ Resources:
             Path: /api/presets
             Method: GET
 
-  # Lambda函数 - 创建预设
+  # Lambda function - Create Preset
   CreatePresetFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -226,7 +226,7 @@ Resources:
             Path: /api/presets
             Method: POST
 
-  # Lambda函数 - 应用预设
+  # Lambda function - Apply Preset
   ApplyPresetFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -244,7 +244,7 @@ Resources:
             Path: /api/devices/{device_id}/apply-preset
             Method: POST
 
-  # Lambda函数 - 用户注册
+  # Lambda function - User Registration
   RegisterFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -277,7 +277,7 @@ Resources:
             Auth:
               Authorizer: NONE
 
-  # Lambda函数 - 用户登录
+  # Lambda function - User Login
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -308,7 +308,7 @@ Resources:
             Auth:
               Authorizer: NONE
 
-  # Lambda函数 - 获取用户信息
+  # Lambda function - Get User Profile
   GetProfileFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -338,7 +338,7 @@ Resources:
             Path: /api/users/{user_id}
             Method: GET
 
-  # CloudWatch日志组
+  # CloudWatch log groups
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -346,7 +346,7 @@ Resources:
       RetentionInDays: 14
 
 Outputs:
-  # API相关输出
+  # API-related outputs
   AudioDeviceApiUrl:
     Description: 'Audio Device Management API Gateway URL'
     Value: !Sub 'https://${AudioDeviceApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/'
@@ -359,7 +359,7 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-ApiId'
 
-  # Cognito相关输出
+  # Cognito-related outputs
   UserPoolId:
     Description: 'Cognito User Pool ID'
     Value: !Ref UserPool
@@ -378,14 +378,14 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-CognitoRegion'
 
-  # DynamoDB相关输出
+  # DynamoDB-related outputs
   AudioManagementTableName:
     Description: 'DynamoDB Audio Management Table Name'
     Value: !Ref AudioManagementTable
     Export:
       Name: !Sub '${AWS::StackName}-AudioManagementTable'
 
-  # 环境信息
+  # Environment information
   Environment:
     Description: 'Deployment Environment'
     Value: !Ref Environment

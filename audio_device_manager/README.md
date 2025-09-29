@@ -1,218 +1,218 @@
-# 音频设备管理器 (Audio Device Manager)
+# Audio Device Manager
 
-一个使用Flutter开发的音频设备管理demo应用，支持用户认证、设备控制和预设管理功能。
+A Flutter-based demo application for managing audio devices. It supports user authentication, device control, and preset management capabilities.
 
-## 功能特性
+## Feature Highlights
 
-### 🔐 用户认证系统
-- **登录/注册功能**：支持用户名密码登录和新用户注册
-- **用户角色管理**：区分普通用户和管理员用户权限
-- **会话管理**：使用SharedPreferences实现本地会话存储
+### 🔐 User Authentication
+- **Sign-in/Sign-up**: Supports username/password login and new account registration.
+- **Role Management**: Distinguishes permissions between standard users and administrators.
+- **Session Handling**: Relies on SharedPreferences for local session persistence.
 
-### 🎧 设备管理功能
-- **设备列表显示**：横向滚动显示所有音频设备
-- **设备连接状态**：实时显示设备连接/断开状态
-- **音量控制**：滑块调节音量，支持快速音量按钮
-- **EQ均衡器**：10频段均衡器，支持实时调节
-- **设备信息**：显示设备类型、最后更新时间等信息
+### 🎧 Device Management
+- **Device List**: Horizontally scrollable list of all registered audio devices.
+- **Connection Status**: Real-time online/offline indicators for each device.
+- **Volume Control**: Slider-based volume adjustment with quick access buttons.
+- **EQ Equalizer**: Ten-band equalizer with live preview updates.
+- **Device Details**: Displays device model, last updated time, and other metadata.
 
-### 🎛️ 预设管理系统
-- **系统预设**：内置平坦、摇滚、流行、爵士等预设
-- **用户预设**：管理员可创建和管理自定义预设
-- **预设应用**：一键应用预设到设备
-- **预设搜索**：支持按名称、描述、标签搜索
-- **标签过滤**：多标签过滤功能
+### 🎛️ Preset Management
+- **Built-in Presets**: Includes Flat, Rock, Pop, Jazz, and more.
+- **Custom Presets**: Administrators can create and manage bespoke presets.
+- **One-click Apply**: Apply any preset to the active device instantly.
+- **Search Experience**: Search by name, description, or keyword tags.
+- **Tag Filtering**: Multi-tag filter controls for faster discovery.
 
-### 👨‍💼 管理员功能
-- **保存预设**：将当前设备设置保存为公共/私有预设
-- **预设管理**：编辑、删除用户创建的预设
-- **用户管理**：管理员身份标识和权限控制
+### 👨‍💼 Administrator Tools
+- **Save Presets**: Persist current device settings as public or private presets.
+- **Preset Administration**: Edit or delete user-created presets.
+- **User Governance**: Visual admin badge and privilege enforcement.
 
-## 技术架构
+## Architecture
 
-### 📁 项目结构
+### 📁 Project Structure
 ```
 lib/
-├── main.dart                    # 应用程序入口
-├── models/                      # 数据模型
-│   ├── user.dart               # 用户模型
-│   ├── device.dart             # 设备模型
-│   ├── preset.dart             # 预设模型
-│   └── models.dart             # 统一导出
-├── services/                    # 业务逻辑服务
-│   ├── auth_service.dart       # 认证服务
-│   ├── device_service.dart     # 设备服务
-│   └── preset_service.dart     # 预设服务
-├── providers/                   # 状态管理
-│   ├── auth_provider.dart      # 认证状态管理
-│   ├── device_provider.dart    # 设备状态管理
-│   └── preset_provider.dart    # 预设状态管理
-├── screens/                     # 页面UI
-│   ├── login_screen.dart       # 登录页面
-│   ├── home_screen.dart        # 主页面
-│   ├── device_control_screen.dart # 设备控制页面
-│   └── preset_screen.dart      # 预设管理页面
-└── widgets/                     # 可复用组件
-    ├── volume_slider.dart      # 音量滑块组件
-    ├── eq_slider.dart          # EQ均衡器组件
-    └── preset_selector.dart    # 预设选择器组件
+├── main.dart                    # Application entry point
+├── models/                      # Data models
+│   ├── user.dart                # User model
+│   ├── device.dart              # Device model
+│   ├── preset.dart              # Preset model
+│   └── models.dart              # Barrel export file
+├── services/                    # Business logic services
+│   ├── auth_service.dart        # Authentication integration
+│   ├── device_service.dart      # Device-related API wrapper
+│   └── preset_service.dart      # Preset-related API wrapper
+├── providers/                   # State management
+│   ├── auth_provider.dart       # Authentication state
+│   ├── device_provider.dart     # Device state
+│   └── preset_provider.dart     # Preset state
+├── screens/                     # UI pages
+│   ├── login_screen.dart        # Sign-in screen
+│   ├── home_screen.dart         # Home dashboard
+│   ├── device_control_screen.dart # Device control screen
+│   └── preset_screen.dart       # Preset management screen
+└── widgets/                     # Reusable components
+   ├── volume_slider.dart       # Volume slider component
+   ├── eq_slider.dart           # Equalizer slider component
+   └── preset_selector.dart     # Preset selector component
 ```
 
-### 🏗️ 技术栈
-- **Flutter**: 跨平台UI框架
-- **Provider**: 状态管理
-- **SharedPreferences**: 本地数据存储
-- **Material Design**: UI设计系统
+### 🏗️ Tech Stack
+- **Flutter**: Cross-platform UI framework
+- **Provider**: State management solution
+- **SharedPreferences**: Local persistence layer
+- **Material Design**: Core design system
 
-### 📊 数据模型
-- **User**: 用户信息和角色管理
-- **Device**: 音频设备信息、音量和EQ设置
-- **Preset**: 音频预设配置和元数据
-- **EQSettings**: 10频段均衡器配置
+### 📊 Data Models
+- **User**: Account information and role metadata
+- **Device**: Device attributes, volume, and EQ profile
+- **Preset**: Audio preset configuration and metadata
+- **EQSettings**: Ten-band equalizer configuration
 
-## 快速开始
+## Getting Started
 
-### 📋 系统要求
+### 📋 System Requirements
 - Flutter SDK 3.9.2+
 - Dart 3.9.2+
-- Windows/macOS/Linux开发环境
+- Windows, macOS, or Linux development environment
 
-### 🚀 安装运行
-1. **克隆项目**
+### 🚀 Installation & Run
+1. **Clone the repository**
    ```bash
-   git clone <项目地址>
+   git clone <repository-url>
    cd audio_device_manager
    ```
 
-2. **安装依赖**
+2. **Install dependencies**
    ```bash
    flutter pub get
    ```
 
-3. **运行应用**
+3. **Launch the application**
    ```bash
    # Windows
    flutter run -d windows
-   
+
    # macOS
    flutter run -d macos
-   
+
    # Linux
    flutter run -d linux
-   
-   # 移动端
+
+   # Mobile
    flutter run -d android
    flutter run -d ios
    ```
 
-### 👥 测试账户
-| 用户类型 | 用户名 | 密码 | 权限 |
-|---------|--------|------|------|
-| 管理员 | admin | admin123 | 保存/删除预设，管理用户 |
-| 普通用户 | user1 | user123 | 使用设备，应用预设 |
-| 普通用户 | user2 | user123 | 使用设备，应用预设 |
+### 👥 Demo Accounts
+| Role | Username | Password | Permissions |
+|------|----------|----------|-------------|
+| Administrator | admin | admin123 | Save/delete presets, manage users |
+| Standard User | user1 | user123 | Control devices and apply presets |
+| Standard User | user2 | user123 | Control devices and apply presets |
 
-## 界面预览
+## UI Overview
 
-### 🔑 登录界面
-- 简洁的登录表单设计
-- 支持用户注册功能
-- 演示账户信息提示
-- 输入验证和错误提示
+### 🔑 Login Screen
+- Clean login form layout
+- Optional sign-up flow for new users
+- Demo account hints for quick testing
+- Input validation with contextual error prompts
 
-### 🏠 主界面
-- 底部导航栏切换功能页面
-- 顶部显示用户信息和角色标识
-- 刷新按钮和登出功能
+### 🏠 Home Screen
+- Bottom navigation bar for feature switching
+- Header with user information and role badge
+- Refresh action and sign-out button
 
-### 🎵 设备控制页面
-- 设备列表横向滑动展示
-- 音量控制滑块和快速按钮
-- 10频段EQ均衡器可视化
-- 预设选择器和应用功能
-- 管理员保存预设功能
+### 🎵 Device Control Screen
+- Horizontal carousel of registered devices
+- Volume slider with quick preset buttons
+- Ten-band EQ visualization
+- Preset selector and apply controls
+- Administrator-only save preset action
 
-### ⚙️ 预设管理页面
-- 搜索和标签过滤功能
-- 系统预设和用户预设分类显示
-- 预设详情模态弹窗
-- 管理员编辑删除功能
+### ⚙️ Preset Management Screen
+- Search box and tag filters
+- Separate sections for system and user presets
+- Modal dialog for preset details
+- Admin-only edit and delete options
 
-## 核心功能演示
+## Feature Walkthrough
 
-### 🎚️ 音量控制
-- 实时音量调节滑块
-- 可视化音量图标和颜色变化
-- 快速音量按钮（静音、低、中、高）
-- 音量百分比数字显示
+### 🎚️ Volume Control
+- Real-time slider adjustment
+- Visual volume icon with dynamic color states
+- Quick buttons for mute, low, medium, and high levels
+- Numeric percentage indicator
 
-### 🎛️ EQ均衡器
-- 10频段频率调节（32Hz-16kHz）
-- 实时EQ曲线可视化
-- 预设EQ模式快速切换
-- 自定义EQ设置保存
+### 🎛️ Equalizer
+- Ten frequency bands (32 Hz–16 kHz)
+- Live EQ curve visualization
+- Quick switching between preset EQ modes
+- Save custom equalizer configurations
 
-### 💾 预设系统
-- 系统内置预设（平坦、摇滚、流行、爵士）
-- 用户自定义预设创建和管理
-- 预设标签分类和搜索
-- 公共/私有预设权限控制
+### 💾 Preset System
+- Built-in presets (Flat, Rock, Pop, Jazz, etc.)
+- Create and manage personalized presets
+- Categorize and search by preset tags
+- Public versus private preset access control
 
-## 数据持久化
+## Data Persistence
 
-应用使用SharedPreferences实现本地数据存储：
-- 用户认证信息和会话管理
-- 设备设置和状态保存
-- 用户自定义预设存储
-- 应用配置和偏好设置
+The application relies on SharedPreferences for lightweight storage:
+- Authentication tokens and session metadata
+- Persisted device settings and last-known state
+- User-defined presets
+- Application preferences and configuration flags
 
-## 状态管理
+## State Management
 
-使用Provider模式管理应用状态：
-- **AuthProvider**: 用户登录状态和权限管理
-- **DeviceProvider**: 设备列表和控制状态
-- **PresetProvider**: 预设数据和操作状态
+Provider is used to coordinate app-wide state:
+- **AuthProvider**: Tracks user authentication and authority.
+- **DeviceProvider**: Manages device list, selection, and edits.
+- **PresetProvider**: Handles preset catalog and operations.
 
-## 开发说明
+## Development Notes
 
-### 🔧 添加新设备类型
-1. 在`Device`模型中添加新的设备类型
-2. 在`DeviceService`中更新设备图标映射
-3. 添加相应的UI图标和样式
+### 🔧 Adding a New Device Type
+1. Extend the `Device` model with the new type information.
+2. Update the icon mapping within `DeviceService`.
+3. Provide matching UI assets and styling.
 
-### 📝 扩展预设功能
-1. 在`Preset`模型中添加新的预设属性
-2. 更新`PresetService`中的保存/加载逻辑
-3. 修改预设UI组件显示新属性
+### 📝 Extending Preset Features
+1. Add new preset attributes to the `Preset` model.
+2. Update persistence logic inside `PresetService`.
+3. Adjust presets UI components to surface the new fields.
 
-### 🎨 自定义UI主题
-1. 修改`main.dart`中的`ThemeData`配置
-2. 更新颜色方案和组件样式
-3. 适配不同平台的设计规范
+### 🎨 Customizing the Theme
+1. Modify the `ThemeData` configuration in `main.dart`.
+2. Refresh the color palette and component styles.
+3. Align platform-specific design nuances.
 
-## 未来扩展
+## Roadmap
 
-### 🔮 计划功能
-- [ ] 蓝牙设备自动发现和连接
-- [ ] 音频效果实时预览
-- [ ] 多设备同步管理
-- [ ] 云端预设同步
-- [ ] 语音控制集成
-- [ ] 音频分析和可视化
-- [ ] 个性化推荐系统
+### 🔮 Planned Features
+- [ ] Automatic discovery and pairing of Bluetooth devices
+- [ ] Real-time audio effect preview
+- [ ] Multi-device synchronization
+- [ ] Cloud-based preset syncing
+- [ ] Voice control integrations
+- [ ] Audio analytics and visualization
+- [ ] Personalized recommendation engine
 
-### 🛠️ 技术改进
-- [ ] 使用Riverpod替代Provider
-- [ ] 集成音频处理库
-- [ ] 添加单元测试和集成测试
-- [ ] 实现CI/CD自动化部署
-- [ ] 性能优化和内存管理
-- [ ] 无障碍功能支持
+### 🛠️ Technical Enhancements
+- [ ] Evaluate Riverpod as a replacement for Provider
+- [ ] Integrate an audio-processing library
+- [ ] Add unit and integration test coverage
+- [ ] Set up CI/CD automation
+- [ ] Performance and memory optimizations
+- [ ] Accessibility improvements
 
-## 许可证
+## License
 
-本项目仅用于演示和学习目的，请勿用于商业用途。
+This project is provided for demonstration and learning purposes only; commercial use is not permitted.
 
 ---
 
-*最后更新：2024年9月*
+*Last updated: September 2024*

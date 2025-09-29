@@ -1,5 +1,5 @@
 /**
- * 更新设备状态（音量、EQ、混响）
+ * Update device state (volume, EQ, reverb)
  * PUT /api/devices/{device_id}
  */
 
@@ -19,47 +19,47 @@ exports.handler = async (event, context) => {
         const body = JSON.parse(event.body || '{}');
 
         if (!device_id) {
-            return createResponse(400, { error: '设备ID不能为空' });
+            return createResponse(400, { error: 'Device ID is required' });
         }
 
-        // 获取设备信息 - 使用单表设计
+        // Fetch device detail using the single-table pattern
         const deviceResult = await getDevice(device_id);
         if (!deviceResult.device) {
-            return createResponse(404, { error: '设备不存在' });
+            return createResponse(404, { error: 'Device not found' });
         }
 
         const device = deviceResult.device;
 
-        // 检查用户权限
+        // Verify the caller has access to this device
         if (!canOperateDevice(device, userInfo)) {
-            return createResponse(403, { error: '没有权限操作此设备' });
+            return createResponse(403, { error: 'You do not have permission to operate this device' });
         }
 
-        // 准备更新数据 - 更新state对象中的字段
+        // Prepare the SET expression pieces for state updates
         const updates = {};
         const updateExpressions = [];
         const expressionAttributeValues = {};
         const expressionAttributeNames = {};
 
-        // 音量更新
+        // Volume update
         if (typeof body.volume === 'number') {
             if (body.volume < 0 || body.volume > 1) {
-                return createResponse(400, { error: '音量值必须在0到1之间' });
+                return createResponse(400, { error: 'Volume must be between 0 and 1' });
             }
             updateExpressions.push('#state.volume = :volume');
             expressionAttributeValues[':volume'] = body.volume;
             expressionAttributeNames['#state'] = 'state';
         }
 
-        // EQ设置更新
+        // EQ settings update
         if (Array.isArray(body.eq)) {
             if (body.eq.length !== 5) {
-                return createResponse(400, { error: 'EQ设置必须包含5个频段' });
+                return createResponse(400, { error: 'EQ settings must contain 5 bands' });
             }
             
             for (let i = 0; i < body.eq.length; i++) {
                 if (typeof body.eq[i] !== 'number' || body.eq[i] < -12 || body.eq[i] > 12) {
-                    return createResponse(400, { error: `EQ频段${i + 1}值必须在-12到12之间` });
+                    return createResponse(400, { error: `EQ band ${i + 1} must be between -12 and 12` });
                 }
             }
             
@@ -68,30 +68,30 @@ exports.handler = async (event, context) => {
             expressionAttributeNames['#state'] = 'state';
         }
 
-        // 混响更新
+        // Reverb update
         if (typeof body.reverb === 'number') {
             if (body.reverb < 0 || body.reverb > 1) {
-                return createResponse(400, { error: '混响值必须在0到1之间' });
+                return createResponse(400, { error: 'Reverb must be between 0 and 1' });
             }
             updateExpressions.push('#state.reverb = :reverb');
             expressionAttributeValues[':reverb'] = body.reverb;
             expressionAttributeNames['#state'] = 'state';
         }
 
-        // 设备名称更新（仅设备拥有者和管理员）
+        // Device name update (only owner or admin)
         if (body.deviceName && (device.owner_id === userInfo.userId || userInfo.userRole === 'admin')) {
             if (body.deviceName.length > 50) {
-                return createResponse(400, { error: '设备名称不能超过50个字符' });
+                return createResponse(400, { error: 'Device name must not exceed 50 characters' });
             }
             updateExpressions.push('device_name = :name');
             expressionAttributeValues[':name'] = body.deviceName;
         }
 
         if (updateExpressions.length === 0) {
-            return createResponse(400, { error: '没有提供有效的更新数据' });
+            return createResponse(400, { error: 'No valid fields provided for update' });
         }
 
-        // 添加更新时间和state同步版本
+        // Always refresh the timestamps and the state sync version
         updateExpressions.push('updated_at = :updated_at');
         updateExpressions.push('#state.updated_at = :updated_at');
         updateExpressions.push('#state.sync_version = #state.sync_version + :one');
@@ -99,7 +99,7 @@ exports.handler = async (event, context) => {
         expressionAttributeValues[':one'] = 1;
         expressionAttributeNames['#state'] = 'state';
 
-        // 执行更新 - 使用单表设计的键
+        // Execute the update with the single-table keys
         const updateParams = {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: { 
@@ -119,21 +119,21 @@ exports.handler = async (event, context) => {
 
         return createResponse(200, {
             success: true,
-            message: '设备状态更新成功',
+            message: 'Device state updated successfully',
             data: updatedDevice.toApiResponse()
         });
 
     } catch (error) {
         console.error('Error:', error);
         return createResponse(500, { 
-            error: '更新设备状态失败',
+            error: 'Failed to update device state',
             details: error.message 
         });
     }
 };
 
 /**
- * 获取设备信息 - 使用单表设计
+ * Fetch device detail using the single-table pattern
  */
 async function getDevice(deviceId) {
     try {
@@ -151,21 +151,21 @@ async function getDevice(deviceId) {
         };
 
     } catch (error) {
-        console.error('获取设备信息失败:', error);
+        console.error('Failed to fetch device:', error);
         return { device: null };
     }
 }
 
 /**
- * 检查用户是否可以操作设备
+ * Check whether the current user can operate the device
  */
 function canOperateDevice(device, userInfo) {
-    // Admin可以操作所有设备，普通用户只能操作自己的设备
+    // Admins can operate any device; regular users can only operate their own devices
     return userInfo.userRole === 'admin' || device.owner_id === userInfo.userId;
 }
 
 /**
- * 从事件中提取用户信息
+ * Extract user information from the request context
  */
 function getUserInfo(event) {
     const claims = event.requestContext?.authorizer?.claims || {};
@@ -178,7 +178,7 @@ function getUserInfo(event) {
 }
 
 /**
- * 创建标准化响应
+ * Create a normalized API response
  */
 function createResponse(statusCode, body) {
     return {

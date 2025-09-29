@@ -1,5 +1,5 @@
 /**
- * 获取用户的设备列表
+ * Retrieve the device list accessible to the current user.
  * GET /api/devices
  */
 
@@ -16,11 +16,11 @@ exports.handler = async (event, context) => {
 
         const userInfo = getUserInfo(event);
 
-        // 构建查询参数 - 使用单表设计
+    // Build query parameters using the single-table pattern
         let queryParams;
         
         if (userInfo.userRole === 'admin') {
-            // Admin可以查看所有设备 - 查询所有DEVICE#实体
+            // Admins can inspect every device by scanning DEVICE# items
             queryParams = {
                 TableName: process.env.AUDIO_MANAGEMENT_TABLE,
                 FilterExpression: 'begins_with(PK, :devicePrefix)',
@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
                 }
             };
         } else {
-            // 普通用户只能查看自己的设备 - 使用GSI1查询
+            // Standard users can only see their own devices via GSI1
             queryParams = {
                 TableName: process.env.AUDIO_MANAGEMENT_TABLE,
                 IndexName: 'GSI1',
@@ -42,7 +42,7 @@ exports.handler = async (event, context) => {
 
         console.log('DynamoDB Query Params:', JSON.stringify(queryParams));
 
-        // 执行查询
+    // Execute the appropriate read based on role
         let result;
         if (userInfo.userRole === 'admin') {
             result = await dynamoDb.send(new ScanCommand(queryParams));
@@ -50,7 +50,7 @@ exports.handler = async (event, context) => {
             result = await dynamoDb.send(new QueryCommand(queryParams));
         }
 
-        // 转换为Device对象并格式化响应
+    // Normalize to Device models, shape for API, and sort by recency
         const devices = result.Items
             .map(item => Device.fromDynamoItem(item))
             .map(device => device.toApiResponse())
@@ -68,14 +68,14 @@ exports.handler = async (event, context) => {
     } catch (error) {
         console.error('Error:', error);
         return createResponse(500, { 
-            error: '获取设备列表失败',
+            error: 'Failed to fetch device list',
             details: error.message 
         });
     }
 };
 
 /**
- * 从事件中提取用户信息
+ * Extract identity details from the API Gateway event.
  */
 function getUserInfo(event) {
     const claims = event.requestContext?.authorizer?.claims || {};
@@ -88,7 +88,7 @@ function getUserInfo(event) {
 }
 
 /**
- * 创建标准化响应
+ * Helper to build consistent API Gateway responses.
  */
 function createResponse(statusCode, body) {
     return {

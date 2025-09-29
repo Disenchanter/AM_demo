@@ -1,11 +1,11 @@
 /**
- * 用户注册接口
+ * User registration endpoint
  * POST /api/auth/register
- * 
- * 处理用户注册流程：
- * 1. 在 Cognito 中创建用户
- * 2. 在 DynamoDB 中创建用户记录
- * 3. 创建默认设备和预设
+ *
+ * Flow overview:
+ * 1. Create the user in Cognito
+ * 2. Persist a user record in DynamoDB
+ * 3. Provision a default demo device and preset metadata
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -31,43 +31,43 @@ exports.handler = async (event, context) => {
             role = 'user'
         } = body;
 
-        // 验证必填字段
+        // Validate required inputs
         if (!email || !password || !fullName) {
             return createResponse(400, {
-                error: '缺少必填字段',
-                message: '邮箱、密码和姓名都是必填的'
+                error: 'Missing required fields',
+                message: 'Email, password, and full name are all required'
             });
         }
 
-        // 验证邮箱格式
+        // Enforce email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return createResponse(400, {
-                error: '邮箱格式无效'
+                error: 'Invalid email format'
             });
         }
 
-        // 验证密码强度
+        // Basic password length requirement
         if (password.length < 8) {
             return createResponse(400, {
-                error: '密码长度至少8位'
+                error: 'Password must be at least 8 characters long'
             });
         }
 
-        // 检查用户是否已存在于 DynamoDB
+        // Guard against duplicate records in DynamoDB
         const existingUser = await checkUserExists(email);
         if (existingUser) {
             return createResponse(409, {
-                error: '用户已存在',
-                message: '该邮箱已被注册'
+                error: 'User already exists',
+                message: 'This email address is already registered'
             });
         }
 
-        // 1. 在 Cognito 中创建用户
+        // 1. Create the user in Cognito
         const cognitoUser = await createCognitoUser(email, password, fullName, role);
-        console.log('Cognito用户创建成功:', cognitoUser.User.Username);
+        console.log('Cognito user created:', cognitoUser.User.Username);
 
-        // 2. 创建用户数据模型
+        // 2. Build the user domain model
         const userData = {
             cognito_id: cognitoUser.User.Username,
             email: email,
@@ -80,35 +80,35 @@ exports.handler = async (event, context) => {
 
         const user = new User(userData);
 
-        // 验证用户数据
+        // Validate user payload
         const validation = user.validate();
         if (!validation.isValid) {
-            // 如果用户数据无效，删除 Cognito 用户
+            // Roll back Cognito user when validation fails
             await deleteCognitoUser(cognitoUser.User.Username);
             return createResponse(400, {
-                error: '用户数据验证失败',
+                error: 'User data validation failed',
                 details: validation.errors
             });
         }
 
-        // 3. 保存用户到 DynamoDB
+        // 3. Persist the user to DynamoDB
         await dynamoDb.send(new PutCommand({
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Item: user.toDynamoItem(),
             ConditionExpression: 'attribute_not_exists(PK)'
         }));
 
-        // 4. 为新用户创建一个示例设备（Demo用）
+        // 4. Provision a demo device for the new user
         await createDemoDeviceForUser(user.user_id, email);
 
-        // 5. 更新用户统计
+        // 5. Initialize the user stats counters
         await updateUserStats(user.user_id, { devices_count: 1 });
 
-        console.log('用户注册成功:', user.user_id);
+        console.log('User registration completed:', user.user_id);
 
         return createResponse(201, {
             success: true,
-            message: '注册成功',
+            message: 'Registration successful',
             data: {
                 user: user.toApiResponse(),
                 cognitoId: cognitoUser.User.Username
@@ -116,31 +116,31 @@ exports.handler = async (event, context) => {
         });
 
     } catch (error) {
-        console.error('注册失败:', error);
+        console.error('Registration failed:', error);
 
         if (error.name === 'UsernameExistsException') {
             return createResponse(409, {
-                error: '用户已存在',
-                message: '该邮箱已被注册'
+                error: 'User already exists',
+                message: 'This email address is already registered'
             });
         }
 
         if (error.name === 'ConditionalCheckFailedException') {
             return createResponse(409, {
-                error: '用户已存在',
-                message: '用户记录已存在'
+                error: 'User already exists',
+                message: 'User record already exists'
             });
         }
 
         return createResponse(500, {
-            error: '注册失败',
+            error: 'Registration failed',
             details: error.message
         });
     }
 };
 
 /**
- * 检查用户是否已存在
+ * Check whether a user record already exists
  */
 async function checkUserExists(email) {
     try {
@@ -154,13 +154,13 @@ async function checkUserExists(email) {
         }));
         return result.Item;
     } catch (error) {
-        console.log('检查用户存在性时出错:', error);
+        console.log('Error during user existence check:', error);
         return null;
     }
 }
 
 /**
- * 在 Cognito 中创建用户
+ * Create the Cognito user entry
  */
 async function createCognitoUser(email, password, fullName, role) {
     const params = {
@@ -177,14 +177,14 @@ async function createCognitoUser(email, password, fullName, role) {
 
     const cognitoUser = await cognitoClient.send(new AdminCreateUserCommand(params));
 
-    // 添加到用户组
+    // Add the user to the proper group
     await cognitoClient.send(new AdminAddUserToGroupCommand({
         UserPoolId: process.env.USER_POOL_ID || 'us-east-1_JC02HU4kc',
         Username: cognitoUser.User.Username,
         GroupName: role
     }));
 
-    // 设置永久密码
+    // Configure a permanent password
     await cognitoClient.send(new AdminSetUserPasswordCommand({
         UserPoolId: process.env.USER_POOL_ID || 'us-east-1_JC02HU4kc',
         Username: cognitoUser.User.Username,
@@ -196,7 +196,7 @@ async function createCognitoUser(email, password, fullName, role) {
 }
 
 /**
- * 删除 Cognito 用户（回滚用）
+ * Remove the Cognito user (rollback helper)
  */
 async function deleteCognitoUser(username) {
     try {
@@ -206,16 +206,16 @@ async function deleteCognitoUser(username) {
             Username: username
         }));
     } catch (error) {
-        console.error('删除Cognito用户失败:', error);
+        console.error('Failed to delete Cognito user:', error);
     }
 }
 
 /**
- * 为新用户创建示例设备
+ * Create a demo device for brand new users
  */
 async function createDemoDeviceForUser(userId, email) {
     const deviceData = {
-        device_name: `${email.split('@')[0]} 的设备`,
+        device_name: `${email.split('@')[0]}'s device`,
         device_model: 'Demo Audio Device v1.0',
         owner_id: userId,
         owner_email: email,
@@ -229,12 +229,12 @@ async function createDemoDeviceForUser(userId, email) {
         Item: device.toDynamoItem()
     }));
 
-    console.log('为用户创建示例设备:', device.device_id);
+    console.log('Created demo device for user:', device.device_id);
     return device;
 }
 
 /**
- * 更新用户统计信息
+ * Initialize or update user statistics
  */
 async function updateUserStats(userId, stats) {
     const { UpdateCommand } = require('@aws-sdk/lib-dynamodb');
@@ -254,7 +254,7 @@ async function updateUserStats(userId, stats) {
 }
 
 /**
- * 创建标准化响应
+ * Build a normalized HTTP response
  */
 function createResponse(statusCode, body) {
     return {

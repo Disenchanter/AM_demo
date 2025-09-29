@@ -29,7 +29,7 @@ class PresetScreen extends StatelessWidget {
                       ElevatedButton.icon(
                         onPressed: presetProvider.isLoading ? null : () => _refreshPresets(context),
                         icon: const Icon(Icons.refresh),
-                        label: const Text("刷新数据"),
+                        label: const Text("Refresh"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
@@ -39,7 +39,7 @@ class PresetScreen extends StatelessWidget {
                       ElevatedButton.icon(
                         onPressed: () => _showCreatePresetDialog(context),
                         icon: const Icon(Icons.add),
-                        label: const Text("创建预设"),
+                        label: const Text("Create Preset"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
@@ -107,7 +107,7 @@ class PresetScreen extends StatelessWidget {
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("预设列表刷新完成"),
+            content: Text("Preset list refreshed"),
             duration: Duration(seconds: 1),
             backgroundColor: Colors.green,
           ),
@@ -122,17 +122,17 @@ class PresetScreen extends StatelessWidget {
     print("PresetScreen: Applying preset ${preset.name} (${preset.id}) to device ${deviceProvider.selectedDevice?.id}");
 
     if (deviceProvider.selectedDevice != null) {
-      // 显示应用提示
+  // Show feedback when applying a preset
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("正在应用预设..."),
+            content: Text("Applying preset..."),
             duration: Duration(seconds: 1),
           ),
         );
       }
 
-      // 直接更新本地设备状态，不调用后端API
+  // Update the local device state directly without invoking the backend
       try {
         deviceProvider.updateSelectedDeviceVolume(preset.volume);
         deviceProvider.updateSelectedDeviceEQ(preset.eqSettings);
@@ -143,7 +143,7 @@ class PresetScreen extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("预设「${preset.name}」已应用到界面，点击保存设置按钮保存更改"),
+              content: Text("Preset “${preset.name}” applied locally. Tap Save Settings to persist."),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ),
@@ -154,7 +154,7 @@ class PresetScreen extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("应用预设时出错，请重试"),
+              content: Text("Failed to apply preset. Please try again."),
               backgroundColor: Colors.red,
             ),
           );
@@ -164,7 +164,7 @@ class PresetScreen extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("请先选择一个设备"),
+            content: Text("Select a device first"),
             backgroundColor: Colors.orange,
           ),
         );
@@ -201,8 +201,8 @@ class PresetScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   CheckboxListTile(
-                    title: const Text("公开预设"),
-                    subtitle: const Text("其他用户可以看到并使用此预设"),
+                    title: const Text("Public preset"),
+                    subtitle: const Text("Other users can discover and use this preset"),
                     value: isPublic,
                     onChanged: (bool? value) {
                       setState(() {

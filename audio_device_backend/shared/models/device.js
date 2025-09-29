@@ -1,6 +1,6 @@
 /**
- * 设备数据模型 (统一架构版)
- * 包含完整设备信息和音频状态
+ * Device data model (unified architecture version)
+ * Encapsulates metadata plus full audio state.
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -12,7 +12,7 @@ class Device {
         this.SK = data.SK || 'DEVICE';
         this.EntityType = 'Device';
         this.device_id = data.device_id || this.PK.replace('DEVICE#', '');
-        this.device_name = data.device_name || '默认音频设备';
+    this.device_name = data.device_name || 'Default Audio Device';
         this.device_model = data.device_model || '';
         this.owner_id = data.owner_id || '';
         this.state = data.state ? AudioProfile.fromDynamoFormat(data.state) : AudioProfile.createDefault();
@@ -23,32 +23,32 @@ class Device {
     }
 
     /**
-     * 验证设备数据有效性
+     * Validate device integrity.
      */
     validate() {
         const errors = [];
 
         if (!this.device_id || this.device_id.trim().length === 0) {
-            errors.push('设备ID不能为空');
+            errors.push('Device ID is required');
         }
 
         if (!this.device_name || this.device_name.trim().length === 0) {
-            errors.push('设备名称不能为空');
+            errors.push('Device name is required');
         }
 
         if (this.device_name.length > 50) {
-            errors.push('设备名称不能超过50个字符');
+            errors.push('Device name must not exceed 50 characters');
         }
 
         if (!this.owner_id || this.owner_id.trim().length === 0) {
-            errors.push('设备拥有者ID不能为空');
+            errors.push('Device owner ID is required');
         }
 
         if (this.device_model && this.device_model.length > 100) {
-            errors.push('设备型号不能超过100个字符');
+            errors.push('Device model must not exceed 100 characters');
         }
 
-        // 验证音频状态
+    // Validate audio state
         const stateValidation = this.state.validate();
         if (!stateValidation.isValid) {
             errors.push(...stateValidation.errors);
@@ -61,7 +61,7 @@ class Device {
     }
 
     /**
-     * 转换为DynamoDB项目格式
+     * Serialize to a DynamoDB item.
      */
     toDynamoItem() {
         return {
@@ -81,7 +81,7 @@ class Device {
     }
 
     /**
-     * 转换为API响应格式 (完整)
+     * Convert to the full API response shape.
      */
     toApiResponse() {
         return {
@@ -98,7 +98,7 @@ class Device {
     }
 
     /**
-     * 转换为Flutter前端格式 (轻量级)
+     * Convert to a lightweight Flutter payload.
      */
     toFlutterFormat() {
         return {
@@ -109,7 +109,7 @@ class Device {
     }
 
     /**
-     * 从DynamoDB项目创建设备实例
+     * Hydrate a device instance from a DynamoDB item.
      */
     static fromDynamoItem(item) {
         return new Device({
@@ -128,7 +128,7 @@ class Device {
     }
 
     /**
-     * 更新设备基本信息
+     * Update core device metadata.
      */
     updateInfo(updates) {
         if (updates.device_name && updates.device_name.trim()) {
@@ -144,7 +144,7 @@ class Device {
     }
 
     /**
-     * 更新设备音频状态
+     * Update the device audio state.
      */
     updateState(audioUpdates) {
         this.state.update(audioUpdates);
@@ -153,7 +153,7 @@ class Device {
     }
 
     /**
-     * 应用预设到设备
+     * Apply a preset to this device.
      */
     applyPreset(preset) {
         const presetProfile = AudioProfile.fromPreset(preset.profile, preset.preset_id);
@@ -163,7 +163,7 @@ class Device {
     }
 
     /**
-     * 设备上线
+     * Mark the device online.
      */
     setOnline() {
         this.is_online = true;
@@ -173,7 +173,7 @@ class Device {
     }
 
     /**
-     * 设备下线
+     * Mark the device offline.
      */
     setOffline() {
         this.is_online = false;
@@ -182,23 +182,23 @@ class Device {
     }
 
     /**
-     * 检查用户是否为设备拥有者
+     * Determine whether the user owns the device.
      */
     isOwnedBy(userId) {
         return this.owner_id === userId;
     }
 
     /**
-     * 检查用户是否可以管理此设备
+     * Determine whether the user can manage the device.
      */
     canManage(userId, userRole) {
         return this.owner_id === userId || userRole === 'admin';
     }
 
     /**
-     * 创建默认设备
+     * Create a default device instance.
      */
-    static createDefault(deviceId, ownerId, deviceName = '默认音频设备') {
+    static createDefault(deviceId, ownerId, deviceName = 'Default Audio Device') {
         return new Device({
             device_id: deviceId,
             device_name: deviceName,
@@ -209,7 +209,7 @@ class Device {
     }
 
     /**
-     * 获取设备状态摘要
+     * Summarize device state for analytics.
      */
     getStateSummary() {
         return {

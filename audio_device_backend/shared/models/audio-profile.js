@@ -1,6 +1,6 @@
 /**
- * 音频配置文件模型
- * 封装音量、EQ、混响参数
+ * Audio profile model
+ * Encapsulates volume, EQ, and reverb parameters
  */
 
 class AudioProfile {
@@ -14,34 +14,34 @@ class AudioProfile {
     }
 
     /**
-     * 验证音频配置有效性
+     * Validate audio profile inputs
      */
     validate() {
         const errors = [];
 
         if (typeof this.volume !== 'number' || this.volume < 0 || this.volume > 1) {
-            errors.push('音量值必须在0到1之间');
+            errors.push('Volume must be between 0 and 1');
         }
 
         if (typeof this.reverb !== 'number' || this.reverb < 0 || this.reverb > 1) {
-            errors.push('混响值必须在0到1之间');
+            errors.push('Reverb must be between 0 and 1');
         }
 
         if (!Array.isArray(this.eq)) {
-            errors.push('EQ设置必须是数组格式');
+            errors.push('EQ settings must be provided as an array');
         } else if (this.eq.length !== 5) {
-            errors.push('EQ设置必须包含5个频段');
+            errors.push('EQ settings must include 5 bands');
         } else {
             for (let i = 0; i < this.eq.length; i++) {
                 const eq = this.eq[i];
                 if (typeof eq !== 'number' || eq < -12 || eq > 12) {
-                    errors.push(`EQ频段${i + 1}值必须在-12到12之间`);
+                    errors.push(`EQ band ${i + 1} must be between -12 and 12`);
                 }
             }
         }
 
         if (this.last_preset_id && typeof this.last_preset_id !== 'string') {
-            errors.push('最后应用预设ID必须是字符串');
+            errors.push('Last applied preset ID must be a string');
         }
 
         return {
@@ -51,7 +51,7 @@ class AudioProfile {
     }
 
     /**
-     * 转换为DynamoDB存储格式
+     * Convert to DynamoDB persistence format
      */
     toDynamoFormat() {
         return {
@@ -65,7 +65,7 @@ class AudioProfile {
     }
 
     /**
-     * 转换为Flutter前端格式
+     * Convert to Flutter client format
      */
     toFlutterFormat() {
         return {
@@ -77,7 +77,7 @@ class AudioProfile {
     }
 
     /**
-     * 从预设配置创建AudioProfile
+     * Build an AudioProfile instance from a preset definition
      */
     static fromPreset(presetProfile, presetId = null) {
         return new AudioProfile({
@@ -91,7 +91,7 @@ class AudioProfile {
     }
 
     /**
-     * 从DynamoDB格式创建实例
+     * Build an instance from DynamoDB format
      */
     static fromDynamoFormat(data) {
         return new AudioProfile({
@@ -105,7 +105,7 @@ class AudioProfile {
     }
 
     /**
-     * 更新音频配置
+     * Apply updates to the profile
      */
     update(updates) {
         if (typeof updates.volume === 'number') {
@@ -130,7 +130,7 @@ class AudioProfile {
     }
 
     /**
-     * 重置到默认值
+     * Reset to default values
      */
     reset() {
         this.volume = 0.5;
@@ -143,7 +143,7 @@ class AudioProfile {
     }
 
     /**
-     * 比较两个配置是否相同（忽略时间戳）
+     * Compare with another profile (ignoring timestamps)
      */
     equals(other) {
         if (!(other instanceof AudioProfile)) return false;
@@ -155,7 +155,7 @@ class AudioProfile {
     }
 
     /**
-     * 克隆配置
+     * Clone the profile
      */
     clone() {
         return new AudioProfile({
@@ -169,7 +169,7 @@ class AudioProfile {
     }
 
     /**
-     * 创建默认音频配置
+     * Create a default audio profile
      */
     static createDefault() {
         return new AudioProfile({
@@ -180,7 +180,7 @@ class AudioProfile {
     }
 
     /**
-     * 获取配置摘要（用于日志）
+     * Summarize key metrics for logging
      */
     getSummary() {
         return {

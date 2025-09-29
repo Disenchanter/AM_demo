@@ -1,21 +1,27 @@
 /**
- * 用户管理脚本 - 创建和管理 Cognito 用户
+ * User management script - create and manage Cognito users
  */
 
-const { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminAddUserToGroupCommand, AdminUpdateUserAttributesCommand, AdminSetUserPasswordCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const {
+    CognitoIdentityProviderClient,
+    AdminCreateUserCommand,
+    AdminAddUserToGroupCommand,
+    AdminUpdateUserAttributesCommand,
+    AdminSetUserPasswordCommand
+} = require('@aws-sdk/client-cognito-identity-provider');
 
 const cognitoClient = new CognitoIdentityProviderClient({ region: 'us-east-1' });
 
 const USER_POOL_ID = 'us-east-1_JC02HU4kc';
 
 /**
- * 创建新用户
+ * Create a new user
  */
 async function createUser(email, name, role = 'user', tempPassword = 'TempPass123!') {
     try {
-        console.log(`创建用户: ${email}`);
-        
-        // 1. 创建用户
+        console.log(`Creating user: ${email}`);
+
+        // 1. Create the user
         const createUserCommand = new AdminCreateUserCommand({
             UserPoolId: USER_POOL_ID,
             Username: email,
@@ -25,23 +31,23 @@ async function createUser(email, name, role = 'user', tempPassword = 'TempPass12
                 { Name: 'email_verified', Value: 'true' }
             ],
             TemporaryPassword: tempPassword,
-            MessageAction: 'SUPPRESS' // 不发送邮件
+            MessageAction: 'SUPPRESS' // Do not send email notification
         });
 
         const createResult = await cognitoClient.send(createUserCommand);
         const username = createResult.User.Username;
-        console.log(`✅ 用户创建成功，用户名: ${username}`);
+        console.log(`✅ User created successfully. Username: ${username}`);
 
-        // 2. 添加到对应的组
+        // 2. Add the user to the appropriate group
         const addToGroupCommand = new AdminAddUserToGroupCommand({
             UserPoolId: USER_POOL_ID,
             Username: username,
             GroupName: role
         });
         await cognitoClient.send(addToGroupCommand);
-        console.log(`✅ 用户已添加到 ${role} 组`);
+        console.log(`✅ User added to ${role} group`);
 
-        // 3. 设置自定义角色属性
+        // 3. Set the custom role attribute
         const updateAttributesCommand = new AdminUpdateUserAttributesCommand({
             UserPoolId: USER_POOL_ID,
             Username: username,
@@ -50,7 +56,7 @@ async function createUser(email, name, role = 'user', tempPassword = 'TempPass12
             ]
         });
         await cognitoClient.send(updateAttributesCommand);
-        console.log(`✅ 用户角色属性已设置为 ${role}`);
+        console.log(`✅ User role attribute set to ${role}`);
 
         return {
             username,
@@ -59,15 +65,14 @@ async function createUser(email, name, role = 'user', tempPassword = 'TempPass12
             role,
             tempPassword
         };
-
     } catch (error) {
-        console.error('❌ 创建用户失败:', error.message);
+        console.error('❌ Failed to create user:', error.message);
         throw error;
     }
 }
 
 /**
- * 设置用户永久密码
+ * Set a permanent password for the user
  */
 async function setUserPassword(username, password) {
     try {
@@ -78,15 +83,15 @@ async function setUserPassword(username, password) {
             Permanent: true
         });
         await cognitoClient.send(command);
-        console.log(`✅ 用户 ${username} 密码设置成功`);
+        console.log(`✅ Password set for user ${username}`);
     } catch (error) {
-        console.error('❌ 设置密码失败:', error.message);
+        console.error('❌ Failed to set password:', error.message);
         throw error;
     }
 }
 
 /**
- * 批量创建测试用户
+ * Create demo users in bulk
  */
 async function createTestUsers() {
     const users = [
@@ -116,23 +121,22 @@ async function createTestUsers() {
         try {
             const user = await createUser(userInfo.email, userInfo.name, userInfo.role);
             await setUserPassword(user.username, userInfo.password);
-            
+
             createdUsers.push({
                 ...user,
                 finalPassword: userInfo.password
             });
-            
-            console.log(`\n用户 ${userInfo.email} 创建完成:`);
-            console.log(`- 邮箱: ${userInfo.email}`);
-            console.log(`- 角色: ${userInfo.role}`);
-            console.log(`- 密码: ${userInfo.password}`);
-            console.log('-----------------------------------\n');
 
+            console.log(`\nUser ${userInfo.email} created:`);
+            console.log(`- Email: ${userInfo.email}`);
+            console.log(`- Role: ${userInfo.role}`);
+            console.log(`- Password: ${userInfo.password}`);
+            console.log('-----------------------------------\n');
         } catch (error) {
             if (error.message.includes('UsernameExistsException')) {
-                console.log(`⚠️  用户 ${userInfo.email} 已存在，跳过创建`);
+                console.log(`⚠️  User ${userInfo.email} already exists. Skipping creation.`);
             } else {
-                console.error(`❌ 创建用户 ${userInfo.email} 失败:`, error.message);
+                console.error(`❌ Failed to create user ${userInfo.email}:`, error.message);
             }
         }
     }
@@ -141,37 +145,36 @@ async function createTestUsers() {
 }
 
 /**
- * 主函数
+ * Entry point
  */
 async function main() {
-    console.log('🚀 开始创建测试用户...\n');
-    
+    console.log('🚀 Starting demo user creation...\n');
+
     try {
         const users = await createTestUsers();
-        
-        console.log('\n🎉 用户创建完成！');
-        console.log('\n📋 创建的用户列表:');
+
+        console.log('\n🎉 User creation complete!');
+        console.log('\n📋 Created users:');
         console.log('=================================');
-        
+
         users.forEach((user, index) => {
             console.log(`${index + 1}. ${user.email}`);
-            console.log(`   角色: ${user.role}`);
-            console.log(`   密码: ${user.finalPassword}`);
+            console.log(`   Role: ${user.role}`);
+            console.log(`   Password: ${user.finalPassword}`);
             console.log('');
         });
 
-        console.log('💡 使用提示:');
-        console.log('1. 在前端应用中使用邮箱和密码登录');
-        console.log('2. 管理员用户可以访问所有设备');
-        console.log('3. 普通用户只能访问自己的设备');
-        
+        console.log('💡 Tips:');
+        console.log('1. Sign in to the frontend application with the email and password.');
+        console.log('2. Admin users can manage all devices.');
+        console.log('3. Standard users can only access their own devices.');
     } catch (error) {
-        console.error('💥 脚本执行失败:', error);
+        console.error('💥 Script execution failed:', error);
         process.exit(1);
     }
 }
 
-// 如果直接运行此脚本
+// Allow the script to be executed directly
 if (require.main === module) {
     main();
 }

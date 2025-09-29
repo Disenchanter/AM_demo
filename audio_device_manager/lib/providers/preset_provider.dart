@@ -61,7 +61,7 @@ class PresetProvider with ChangeNotifier {
     try {
       _presets = await _presetApiService.getPresets(token);
     } catch (e) {
-      _errorMessage = "刷新预设列表失败: $e";
+      _errorMessage = "Failed to refresh presets: $e";
     }
 
     _setLoading(false);

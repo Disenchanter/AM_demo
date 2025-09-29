@@ -1,11 +1,11 @@
 /**
- * 用户登录接口
+ * User login endpoint
  * POST /api/auth/login
- * 
- * 处理用户登录流程：
- * 1. 通过 Cognito 验证用户凭证
- * 2. 更新 DynamoDB 中的用户活跃时间
- * 3. 返回用户信息和令牌
+ *
+ * Flow overview:
+ * 1. Authenticate credentials with Cognito
+ * 2. Update the user's activity timestamp in DynamoDB
+ * 3. Return user details plus issued tokens
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -24,46 +24,46 @@ exports.handler = async (event, context) => {
         const body = JSON.parse(event.body || '{}');
         const { email, password } = body;
 
-        // 验证必填字段
+        // Validate required fields
         if (!email || !password) {
             return createResponse(400, {
-                error: '缺少必填字段',
-                message: '邮箱和密码都是必填的'
+                error: 'Missing required fields',
+                message: 'Email and password are both required'
             });
         }
 
-        // 1. 通过 Cognito 验证用户凭证
+        // 1. Authenticate credentials with Cognito
         const authResult = await authenticateUser(email, password);
         
         if (!authResult.success) {
             return createResponse(401, {
-                error: '登录失败',
-                message: authResult.message || '邮箱或密码错误'
+                error: 'Login failed',
+                message: authResult.message || 'Email or password is incorrect'
             });
         }
 
-        // 2. 从 Cognito 获取用户详细信息
+        // 2. Retrieve user attributes from Cognito
         const cognitoUser = await getCognitoUserDetails(authResult.username);
         
-        // 3. 从 DynamoDB 获取或创建用户记录
+        // 3. Fetch or initialize the user record in DynamoDB
         let user = await getUserFromDatabase(email);
         
         if (!user) {
-            // 如果数据库中没有用户记录，从 Cognito 信息创建一个
+            // Create a new record using Cognito metadata when none exists
             user = await createUserFromCognitoData(cognitoUser);
         } else {
-            // 更新用户的最后活跃时间和登录统计
+            // Refresh last-active timestamps and login counters
             await updateUserActivity(user.user_id);
-            user = await getUserFromDatabase(email); // 重新获取更新后的数据
+            user = await getUserFromDatabase(email); // Reload with updated stats
         }
 
-        console.log('用户登录成功:', user.user_id);
+        console.log('User login succeeded:', user.user_id);
 
         return createResponse(200, {
             success: true,
-            message: '登录成功',
+            message: 'Login successful',
             data: {
-                user: user.toApiResponse(true), // 包含私有信息
+                user: user.toApiResponse(true), // includes private profile fields
                 tokens: {
                     accessToken: authResult.tokens.AccessToken,
                     idToken: authResult.tokens.IdToken,
@@ -79,46 +79,46 @@ exports.handler = async (event, context) => {
         });
 
     } catch (error) {
-        console.error('登录失败:', error);
+        console.error('Login failed:', error);
 
-        // 根据错误类型返回不同的错误信息
+        // Map cognition-specific errors to user-friendly responses
         if (error.name === 'NotAuthorizedException') {
             return createResponse(401, {
-                error: '登录失败',
-                message: '邮箱或密码错误'
+                error: 'Login failed',
+                message: 'Email or password is incorrect'
             });
         }
 
         if (error.name === 'UserNotFoundException') {
             return createResponse(404, {
-                error: '用户不存在',
-                message: '该邮箱尚未注册'
+                error: 'User not found',
+                message: 'This email has not been registered yet'
             });
         }
 
         if (error.name === 'UserNotConfirmedException') {
             return createResponse(403, {
-                error: '账号未激活',
-                message: '请先验证您的邮箱'
+                error: 'Account not activated',
+                message: 'Please verify your email first'
             });
         }
 
         if (error.name === 'PasswordResetRequiredException') {
             return createResponse(403, {
-                error: '需要重置密码',
-                message: '请重置您的密码'
+                error: 'Password reset required',
+                message: 'Please reset your password'
             });
         }
 
         return createResponse(500, {
-            error: '登录失败',
+            error: 'Login failed',
             details: error.message
         });
     }
 };
 
 /**
- * 通过 Cognito 验证用户凭证
+ * Authenticate user credentials via Cognito
  */
 async function authenticateUser(email, password) {
     try {
@@ -140,7 +140,7 @@ async function authenticateUser(email, password) {
         };
 
     } catch (error) {
-        console.error('Cognito认证失败:', error);
+        console.error('Cognito authentication failed:', error);
         return {
             success: false,
             message: error.message
@@ -149,7 +149,7 @@ async function authenticateUser(email, password) {
 }
 
 /**
- * 获取 Cognito 用户详细信息
+ * Fetch detailed Cognito attributes for the user
  */
 async function getCognitoUserDetails(username) {
     const params = {
@@ -162,7 +162,7 @@ async function getCognitoUserDetails(username) {
 }
 
 /**
- * 从数据库获取用户信息
+ * Retrieve a user record from DynamoDB
  */
 async function getUserFromDatabase(email) {
     try {
@@ -183,13 +183,13 @@ async function getUserFromDatabase(email) {
         
         return null;
     } catch (error) {
-        console.error('获取用户数据失败:', error);
+        console.error('Failed to fetch user data:', error);
         return null;
     }
 }
 
 /**
- * 从 Cognito 数据创建用户记录
+ * Create a user record based on Cognito payload
  */
 async function createUserFromCognitoData(cognitoUser) {
     const email = cognitoUser.UserAttributes.find(attr => attr.Name === 'email')?.Value;
@@ -208,7 +208,7 @@ async function createUserFromCognitoData(cognitoUser) {
 
     const user = new User(userData);
     
-    // 保存到数据库
+    // Persist to DynamoDB
     await dynamoDb.send(new PutCommand({
         TableName: process.env.AUDIO_MANAGEMENT_TABLE,
         Item: user.toDynamoItem()
@@ -218,13 +218,13 @@ async function createUserFromCognitoData(cognitoUser) {
 }
 
 /**
- * 更新用户活跃时间和登录统计
+ * Update last-active timestamps and login stats
  */
 async function updateUserActivity(userId) {
     const now = new Date().toISOString();
     
     try {
-        // 先获取当前统计信息
+        // Load existing stats snapshot
         const currentUser = await dynamoDb.send(new GetCommand({
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: {
@@ -254,15 +254,15 @@ async function updateUserActivity(userId) {
             }
         }));
 
-        console.log('用户活跃时间已更新:', userId);
+        console.log('User activity timestamp updated:', userId);
     } catch (error) {
-        console.error('更新用户活跃时间失败:', error);
-        // 不抛出错误，因为这不是关键操作
+        console.error('Failed to update user activity timestamp:', error);
+        // Do not throw because this is a non-critical operation
     }
 }
 
 /**
- * 创建标准化响应
+ * Build a normalized HTTP response
  */
 function createResponse(statusCode, body) {
     return {

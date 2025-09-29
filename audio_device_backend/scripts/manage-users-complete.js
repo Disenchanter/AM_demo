@@ -1,8 +1,14 @@
 /**
- * 完整用户管理脚本 - 创建和管理 Cognito 用户，并同步到 DynamoDB
+ * Comprehensive user management script - provisions Cognito users and syncs data to DynamoDB
  */
 
-const { CognitoIdentityProviderClient, AdminCreateUserCommand, AdminAddUserToGroupCommand, AdminUpdateUserAttributesCommand, AdminSetUserPasswordCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const {
+    CognitoIdentityProviderClient,
+    AdminCreateUserCommand,
+    AdminAddUserToGroupCommand,
+    AdminUpdateUserAttributesCommand,
+    AdminSetUserPasswordCommand
+} = require('@aws-sdk/client-cognito-identity-provider');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const User = require('../shared/models/user');
@@ -17,13 +23,13 @@ const USER_POOL_ID = 'us-east-1_JC02HU4kc';
 const TABLE_NAME = 'AudioManagement-dev';
 
 /**
- * 创建完整用户（Cognito + DynamoDB + 示例设备）
+ * Create a fully populated user (Cognito + DynamoDB + demo devices/presets)
  */
 async function createCompleteUser(email, name, role = 'user') {
     try {
-        console.log(`\n🚀 创建完整用户: ${email} (${role})`);
-        
-        // 1. 创建 Cognito 用户
+        console.log(`\n🚀 Creating full user: ${email} (${role})`);
+
+        // 1. Create Cognito user
         const tempPassword = 'TempPass123!';
         const createUserCommand = new AdminCreateUserCommand({
             UserPoolId: USER_POOL_ID,
@@ -39,17 +45,17 @@ async function createCompleteUser(email, name, role = 'user') {
 
         const cognitoResult = await cognitoClient.send(createUserCommand);
         const cognitoUsername = cognitoResult.User.Username;
-        console.log(`  ✅ Cognito用户创建: ${cognitoUsername}`);
+        console.log(`  ✅ Cognito user created: ${cognitoUsername}`);
 
-        // 2. 添加到用户组
+        // 2. Add the user to the appropriate group
         await cognitoClient.send(new AdminAddUserToGroupCommand({
             UserPoolId: USER_POOL_ID,
             Username: cognitoUsername,
             GroupName: role
         }));
-        console.log(`  ✅ 已添加到 ${role} 组`);
+        console.log(`  ✅ Added to ${role} group`);
 
-        // 3. 设置永久密码
+        // 3. Set a permanent password
         const finalPassword = role === 'admin' ? 'AdminPass123!' : 'UserPass123!';
         await cognitoClient.send(new AdminSetUserPasswordCommand({
             UserPoolId: USER_POOL_ID,
@@ -57,49 +63,49 @@ async function createCompleteUser(email, name, role = 'user') {
             Password: finalPassword,
             Permanent: true
         }));
-        console.log(`  ✅ 密码设置完成`);
+        console.log('  ✅ Password configured');
 
-        // 4. 创建 DynamoDB 用户记录
+        // 4. Create DynamoDB user record
         const userData = {
             cognito_id: cognitoUsername,
-            email: email,
+            email,
             username: email.split('@')[0],
             full_name: name,
-            role: role,
+            role,
             email_verified: true,
             status: 'active',
             profile: {
-                bio: role === 'admin' ? '系统管理员' : `${name} 的个人简介`,
-                location: role === 'admin' ? 'System' : '演示城市'
+                bio: role === 'admin' ? 'System administrator account' : `${name}\'s profile`,
+                location: role === 'admin' ? 'System' : 'Demo City'
             }
         };
 
         const user = new User(userData);
-        
+
         await dynamoDb.send(new PutCommand({
             TableName: TABLE_NAME,
             Item: user.toDynamoItem()
         }));
-        console.log(`  ✅ DynamoDB用户记录: ${user.user_id}`);
+        console.log(`  ✅ DynamoDB user record created: ${user.user_id}`);
 
-        // 5. 创建示例设备
+        // 5. Provision demo devices
         const deviceCount = role === 'admin' ? 2 : 1;
         const devices = [];
-        
+
         for (let i = 1; i <= deviceCount; i++) {
-            const deviceName = role === 'admin' 
-                ? `管理员设备 ${i}` 
-                : `${name} 的设备`;
-            
+            const deviceName = role === 'admin'
+                ? `Admin Device ${i}`
+                : `${name}\'s Device`;
+
             const device = await createDemoDevice(user.user_id, email, deviceName);
             devices.push(device);
-            console.log(`  ✅ 设备创建: ${device.device_name}`);
-            
-            // 为每个设备创建预设
+            console.log(`  ✅ Device created: ${device.device_name}`);
+
+            // Create demo presets for each device
             await createDemoPresets(device.device_id, user.user_id, role, 3);
         }
 
-        // 6. 更新用户统计
+        // 6. Update user statistics
         await updateUserStats(user.user_id, {
             devices_count: devices.length,
             presets_count: devices.length * 3
@@ -108,35 +114,34 @@ async function createCompleteUser(email, name, role = 'user') {
         return {
             cognitoId: cognitoUsername,
             userId: user.user_id,
-            email: email,
-            role: role,
+            email,
+            role,
             password: finalPassword,
             devices: devices.length,
             presets: devices.length * 3
         };
-
     } catch (error) {
         if (error.name === 'UsernameExistsException' || error.message.includes('User account already exists')) {
-            console.log(`⚠️ 用户 ${email} 已存在，尝试创建DynamoDB记录和设备...`);
-            
+            console.log(`⚠️  User ${email} already exists. Attempting to ensure DynamoDB records and devices are in place...`);
+
             try {
-                // 获取现有用户信息并创建DynamoDB记录
+                // Attempt to recreate DynamoDB record for the existing user
                 const userData = {
-                    cognito_id: email, // 假设用户名就是email
-                    email: email,
+                    cognito_id: email, // assume the Cognito username equals the email
+                    email,
                     username: email.split('@')[0],
                     full_name: name,
-                    role: role,
+                    role,
                     email_verified: true,
                     status: 'active',
                     profile: {
                         avatar_url: null,
-                        bio: null,
-                        location: null,
+                        bio: `${name}\'s profile`,
+                        location: 'Demo City',
                         phone: null
                     },
                     preferences: {
-                        language: 'zh-CN',
+                        language: 'en-US',
                         theme: 'light',
                         notifications: {
                             email: true,
@@ -153,7 +158,7 @@ async function createCompleteUser(email, name, role = 'user') {
 
                 const user = new User(userData);
 
-                // 检查用户是否已在DynamoDB中存在
+                // Check if the user already exists in DynamoDB
                 try {
                     const existingUser = await dynamoDb.send(new GetCommand({
                         TableName: TABLE_NAME,
@@ -164,38 +169,36 @@ async function createCompleteUser(email, name, role = 'user') {
                     }));
 
                     if (existingUser.Item) {
-                        console.log(`  ✅ DynamoDB中已存在用户记录`);
-                        return null; // 用户和记录都已存在
+                        console.log('  ✅ DynamoDB user record already exists');
+                        return null;
                     }
                 } catch (getError) {
-                    // 用户不存在，继续创建
+                    // User not found, continue to create records
                 }
 
-                // 创建DynamoDB记录
+                // Create DynamoDB record
                 await dynamoDb.send(new PutCommand({
                     TableName: TABLE_NAME,
                     Item: user.toDynamoItem()
                 }));
-                console.log(`  ✅ DynamoDB用户记录: ${user.user_id}`);
+                console.log(`  ✅ DynamoDB user record created: ${user.user_id}`);
 
-                // 创建示例设备
+                // Provision demo devices
                 const deviceCount = role === 'admin' ? 2 : 1;
                 const devices = [];
-                
+
                 for (let i = 1; i <= deviceCount; i++) {
-                    const deviceName = role === 'admin' 
-                        ? `管理员设备 ${i}` 
-                        : `${name} 的设备`;
-                    
+                    const deviceName = role === 'admin'
+                        ? `Admin Device ${i}`
+                        : `${name}\'s Device`;
+
                     const device = await createDemoDevice(user.user_id, email, deviceName);
                     devices.push(device);
-                    console.log(`  ✅ 设备创建: ${device.device_name}`);
-                    
-                    // 为每个设备创建预设
+                    console.log(`  ✅ Device created: ${device.device_name}`);
+
                     await createDemoPresets(device.device_id, user.user_id, role, 3);
                 }
 
-                // 更新用户统计
                 await updateUserStats(user.user_id, {
                     devices_count: devices.length,
                     presets_count: devices.length * 3
@@ -205,26 +208,25 @@ async function createCompleteUser(email, name, role = 'user') {
                 return {
                     cognitoId: email,
                     userId: user.user_id,
-                    email: email,
-                    role: role,
+                    email,
+                    role,
                     password: finalPassword,
                     devices: devices.length,
                     presets: devices.length * 3
                 };
-
             } catch (dbError) {
-                console.error(`❌ 创建DynamoDB记录失败: ${dbError.message}`);
+                console.error(`❌ Failed to create DynamoDB record: ${dbError.message}`);
                 return null;
             }
         } else {
-            console.error(`❌ 创建用户失败: ${error.message}`);
+            console.error(`❌ Failed to create user: ${error.message}`);
             throw error;
         }
     }
 }
 
 /**
- * 创建示例设备
+ * Create a sample device for the user
  */
 async function createDemoDevice(userId, email, deviceName) {
     const deviceData = {
@@ -232,12 +234,12 @@ async function createDemoDevice(userId, email, deviceName) {
         device_model: 'Demo Audio Device v2.0',
         owner_id: userId,
         owner_email: email,
-        is_online: Math.random() > 0.3, // 70% 在线
+        is_online: Math.random() > 0.3, // 70% online
         last_seen: new Date().toISOString()
     };
 
     const device = new Device(deviceData);
-    
+
     await dynamoDb.send(new PutCommand({
         TableName: TABLE_NAME,
         Item: device.toDynamoItem()
@@ -247,12 +249,12 @@ async function createDemoDevice(userId, email, deviceName) {
 }
 
 /**
- * 为设备创建示例预设
+ * Create demo presets for a device
  */
 async function createDemoPresets(deviceId, userId, userRole, count = 3) {
-    const presetNames = ['流行音乐', '摇滚音乐', '古典音乐', '电子音乐', '爵士音乐'];
+    const presetNames = ['Pop Boost', 'Rock Stage', 'Classical Hall', 'Electronic Pulse', 'Smooth Jazz'];
     const categories = ['music', 'gaming', 'movie', 'voice', 'custom'];
-    
+
     for (let i = 0; i < count && i < presetNames.length; i++) {
         const presetData = {
             preset_name: presetNames[i],
@@ -260,12 +262,11 @@ async function createDemoPresets(deviceId, userId, userRole, count = 3) {
             device_id: deviceId,
             created_by: userId,
             creator_role: userRole,
-            is_public: userRole === 'admin' ? Math.random() > 0.5 : false, // 管理员50%公开
-            description: `${presetNames[i]}专用音频配置`,
-            // 随机音频设置
+            is_public: userRole === 'admin' ? Math.random() > 0.5 : false,
+            description: `${presetNames[i]} audio configuration`,
             profile: {
-                volume: 0.3 + Math.random() * 0.4, // 0.3-0.7
-                eq_settings: Array.from({length: 5}, () => Math.floor(Math.random() * 7) - 3), // -3到+3
+                volume: 0.3 + Math.random() * 0.4,
+                eq_settings: Array.from({ length: 5 }, () => Math.floor(Math.random() * 7) - 3),
                 reverb: Math.random() * 0.5,
                 bass_boost: Math.random() * 0.3,
                 treble_boost: Math.random() * 0.3
@@ -273,7 +274,7 @@ async function createDemoPresets(deviceId, userId, userRole, count = 3) {
         };
 
         const preset = new Preset(presetData);
-        
+
         await dynamoDb.send(new PutCommand({
             TableName: TABLE_NAME,
             Item: preset.toDynamoItem()
@@ -282,11 +283,11 @@ async function createDemoPresets(deviceId, userId, userRole, count = 3) {
 }
 
 /**
- * 更新用户统计信息
+ * Update basic user statistics
  */
 async function updateUserStats(userId, stats) {
     const { UpdateCommand } = require('@aws-sdk/lib-dynamodb');
-    
+
     await dynamoDb.send(new UpdateCommand({
         TableName: TABLE_NAME,
         Key: {
@@ -302,15 +303,15 @@ async function updateUserStats(userId, stats) {
 }
 
 /**
- * 批量创建演示用户
+ * Create a set of demo users
  */
 async function createDemoUsers() {
-    console.log('🚀 开始创建演示用户...\n');
+    console.log('🚀 Starting demo user provisioning...\n');
 
     const demoUsers = [
         {
             email: 'admin@demo.com',
-            name: '系统管理员',
+            name: 'System Administrator',
             role: 'admin'
         },
         {
@@ -339,26 +340,25 @@ async function createDemoUsers() {
                 userData.name,
                 userData.role
             );
-            
+
             if (result) {
                 results.push(result);
-                
-                console.log(`\n📋 用户 ${userData.email} 创建完成:`);
-                console.log(`   - 邮箱: ${result.email}`);
-                console.log(`   - 角色: ${result.role}`);
-                console.log(`   - 密码: ${result.password}`);
-                console.log(`   - 设备: ${result.devices} 个`);
-                console.log(`   - 预设: ${result.presets} 个`);
+
+                console.log(`\n📋 User ${userData.email} provisioned:`);
+                console.log(`   - Email: ${result.email}`);
+                console.log(`   - Role: ${result.role}`);
+                console.log(`   - Password: ${result.password}`);
+                console.log(`   - Devices: ${result.devices}`);
+                console.log(`   - Presets: ${result.presets}`);
                 console.log('-----------------------------------');
             } else {
-                console.log(`\n⚠️ 用户 ${userData.email} 已完全存在，跳过创建`);
+                console.log(`\n⚠️  User ${userData.email} already exists. Skipping.`);
             }
-
         } catch (error) {
             if (error.name === 'UsernameExistsException') {
-                console.log(`⚠️ 用户 ${userData.email} 已存在，跳过创建`);
+                console.log(`⚠️  User ${userData.email} already exists. Skipping.`);
             } else {
-                console.error(`❌ 创建用户 ${userData.email} 失败:`, error.message);
+                console.error(`❌ Failed to create user ${userData.email}:`, error.message);
             }
         }
     }
@@ -367,14 +367,13 @@ async function createDemoUsers() {
 }
 
 /**
- * 显示所有用户统计
+ * Display user statistics from DynamoDB
  */
 async function showUserStats() {
-    console.log('\n📊 用户数据统计:');
+    console.log('\n📊 User statistics:');
     console.log('='.repeat(50));
 
     try {
-        // 扫描所有用户
         const result = await dynamoDb.send(new ScanCommand({
             TableName: TABLE_NAME,
             FilterExpression: 'EntityType = :userType',
@@ -384,37 +383,35 @@ async function showUserStats() {
         }));
 
         if (result.Items && result.Items.length > 0) {
-            console.log(`\n找到 ${result.Items.length} 个用户:`);
-            
+            console.log(`\nFound ${result.Items.length} users:`);
+
             result.Items.forEach(item => {
                 const user = User.fromDynamoItem(item);
                 console.log(`\n👤 ${user.full_name} (${user.email})`);
-                console.log(`   角色: ${user.role}`);
-                console.log(`   状态: ${user.status}`);
-                console.log(`   设备: ${user.stats.devices_count} 个`);
-                console.log(`   预设: ${user.stats.presets_count} 个`);
-                console.log(`   创建时间: ${user.created_at}`);
+                console.log(`   Role: ${user.role}`);
+                console.log(`   Status: ${user.status}`);
+                console.log(`   Devices: ${user.stats.devices_count}`);
+                console.log(`   Presets: ${user.stats.presets_count}`);
+                console.log(`   Created: ${user.created_at}`);
             });
         } else {
-            console.log('\n📭 没有找到用户记录');
+            console.log('\n📭 No user records found');
         }
 
-        // 显示总体统计
         const totalStats = await getTotalStats();
-        console.log(`\n📈 总体统计:`);
-        console.log(`   用户总数: ${totalStats.users}`);
-        console.log(`   设备总数: ${totalStats.devices}`);
-        console.log(`   预设总数: ${totalStats.presets}`);
-        console.log(`   管理员数: ${totalStats.admins}`);
-        console.log(`   普通用户: ${totalStats.regularUsers}`);
-
+        console.log('\n📈 Totals:');
+        console.log(`   Users: ${totalStats.users}`);
+        console.log(`   Devices: ${totalStats.devices}`);
+        console.log(`   Presets: ${totalStats.presets}`);
+        console.log(`   Admins: ${totalStats.admins}`);
+        console.log(`   Standard users: ${totalStats.regularUsers}`);
     } catch (error) {
-        console.error('❌ 获取用户统计失败:', error.message);
+        console.error('❌ Failed to retrieve user statistics:', error.message);
     }
 }
 
 /**
- * 获取总体统计信息
+ * Aggregate overall statistics
  */
 async function getTotalStats() {
     const result = await dynamoDb.send(new ScanCommand({
@@ -450,16 +447,16 @@ async function getTotalStats() {
 }
 
 /**
- * 主函数
+ * Entry point
  */
 async function main() {
     const command = process.argv[2] || 'create';
 
     switch (command) {
-        case 'create':
+        case 'create': {
             const results = await createDemoUsers();
-            console.log(`\n🎉 演示用户创建完成！`);
-            console.log(`\n📋 创建结果:`);
+            console.log('\n🎉 Demo users provisioned successfully!');
+            console.log('\n📋 Summary:');
             console.log('='.repeat(50));
             results.forEach(result => {
                 if (result) {
@@ -467,6 +464,7 @@ async function main() {
                 }
             });
             break;
+        }
 
         case 'stats':
             await showUserStats();
@@ -474,20 +472,20 @@ async function main() {
 
         default:
             console.log(`
-🎯 用户管理脚本使用方法:
+🎯 User management script usage:
 
-命令:
-  create  - 创建演示用户（包含设备和预设）
-  stats   - 显示用户统计信息
+Commands:
+  create  - Provision demo users (including devices and presets)
+  stats   - Display user statistics from DynamoDB
 
-使用示例:
+Examples:
   node scripts/manage-users-complete.js create
   node scripts/manage-users-complete.js stats
             `);
     }
 }
 
-// 运行脚本
+// Execute when run directly
 if (require.main === module) {
     main().catch(console.error);
 }

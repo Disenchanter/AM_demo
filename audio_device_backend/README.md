@@ -1,114 +1,113 @@
 # Audio Device Manager - Backend
 
-## 🎵 项目概述
+## 🎵 Project Overview
 
-音频设备管理系统的AWS Serverless后端，支持多用户音频设备管理和预设配置。
+AWS Serverless backend for the Audio Device Management system, supporting multi-user device control and preset orchestration.
 
-### 🏗️ 技术栈
+### 🏗️ Tech Stack
 - **API**: AWS API Gateway + Lambda (Node.js 20.x)
-- **认证**: AWS Cognito (JWT)
-- **数据库**: DynamoDB (Single Table Design)
-- **部署**: AWS SAM CLI
-- **权限**: 基于角色的访问控制 (RBAC)
+- **Authentication**: AWS Cognito (JWT)
+- **Database**: DynamoDB (single-table design)
+- **Deployment**: AWS SAM CLI
+- **Authorization**: Role-based access control (RBAC)
 
-### 📁 项目结构
+### 📁 Project Structure
 ```
 audio_device_backend/
-├── lambda/              # Lambda函数
-│   ├── devices/        # 设备管理
-│   ├── presets/        # 预设管理  
-│   └── users/          # 用户管理
-├── shared/             # 共享模型和工具
-│   ├── models/         # 数据模型
-│   └── utils/          # 工具函数
-├── scripts/            # 管理脚本
-├── docs/               # 文档
-└── template.yaml       # SAM模板
+├── lambda/              # Lambda functions
+│   ├── devices/         # Device management
+│   ├── presets/         # Preset management  
+│   └── users/           # User management
+├── shared/              # Shared models and utilities
+│   ├── models/          # Data models
+│   └── utils/           # Helper functions
+├── scripts/             # Maintenance scripts
+├── docs/                # Documentation
+└── template.yaml        # SAM template
 ```
 
-### 🔐 权限模型
-- **管理员 (admin)**: 查看所有数据，创建公开预设
-- **普通用户 (user)**: 查看自己的数据+公开预设，创建私有预设
+### 🔐 Permission Model
+- **Administrator (admin)**: View all data, create public presets
+- **Standard user (user)**: View personal data and public presets, create private presets
 
-### 📊 数据统计
-- **用户**: 4个（1管理员 + 3普通用户）
-- **设备**: 5台音频设备
-- **预设**: 15个音频配置预设
+### 📊 Data Snapshot
+- **Users**: 4 (1 admin + 3 standard users)
+- **Devices**: 5 audio devices
+- **Presets**: 15 audio configuration presets
 
-## 📚 API文档
+## 📚 API Documentation
 
-- 📖 **[完整API文档](./API_DOCUMENTATION.md)** - 详细的接口说明和示例
-- ⚡ **[快速参考](./API_QUICK_REFERENCE.md)** - API概览和常用操作
-- 🔬 **[Postman集合](./AudioDeviceAPI.postman_collection.json)** - 导入测试
+- 📖 **[Full API Documentation](./API_DOCUMENTATION.md)** – Detailed endpoint descriptions and examples
+- ⚡ **[Quick Reference](./API_QUICK_REFERENCE.md)** – Overview of common operations
+- 🔬 **[Postman Collection](./AudioDeviceAPI.postman_collection.json)** – Importable testing suite
 
-### 🚀 API基础信息
+### 🚀 API Basics
 ```
 Base URL: https://f0xsnhnui6.execute-api.us-east-1.amazonaws.com/dev/api
-认证方式: Bearer Token (JWT)
+Authentication: Bearer token (JWT)
 ```
-
-### 🎯 主要端点
-| 功能 | 方法 | 端点 | 认证 |
+### 🎯 Key Endpoints
+| Feature | Method | Endpoint | Auth |
 |------|------|------|------|
-| 用户登录 | `POST` | `/auth/login` | ❌ |
-| 获取设备 | `GET` | `/devices` | ✅ |
-| 获取预设 | `GET` | `/presets` | ✅ |
-| 创建预设 | `POST` | `/presets` | ✅ |
-| 应用预设 | `POST` | `/devices/{id}/apply-preset` | ✅ |
+| User login | `POST` | `/auth/login` | ❌ |
+| List devices | `GET` | `/devices` | ✅ |
+| List presets | `GET` | `/presets` | ✅ |
+| Create preset | `POST` | `/presets` | ✅ |
+| Apply preset | `POST` | `/devices/{id}/apply-preset` | ✅ |
 
-## 👤 演示账户
-| 角色 | 邮箱 | 密码 |
+## 👤 Demo Accounts
+| Role | Email | Password |
 |------|------|------|
-| 管理员 | `admin@demo.com` | `AdminPass123!` |
-| 用户 | `alice@demo.com` | `UserPass123!` |
+| Administrator | `admin@demo.com` | `AdminPass123!` |
+| User | `alice@demo.com` | `UserPass123!` |
 
-## 🚀 快速开始
+## 🚀 Getting Started
 
-### 前提条件
-- Node.js 18+ 
-- AWS CLI 配置
-- SAM CLI 安装
+### Prerequisites
+- Node.js 18+
+- AWS CLI configured
+- SAM CLI installed
 
-### 安装和部署
+### Installation & Deployment
 ```bash
-# 1. 安装依赖
+# 1. Install dependencies
 npm install
 
-# 2. 构建项目
+# 2. Build the project
 sam build
 
-# 3. 部署到AWS (dev环境)
+# 3. Deploy to AWS (dev environment)
 sam deploy --config-env dev
 
-# 4. 查看API端点
+# 4. Inspect API outputs
 sam list stack-outputs --stack-name audio-device-backend-dev
 ```
 
-### 🧪 测试API
+### 🧪 Testing the API
 ```bash
-# 运行权限测试
+# Validate permissions
 npm run test:permissions
 
-# 查看数据库统计
+# Show database statistics
 npm run data:stats
 
-# 创建演示用户
+# Provision demo users
 npm run users:complete
 ```
 
-## 🛠️ 开发脚本
+## 🛠️ Development Scripts
 
-| 命令 | 描述 |
+| Command | Description |
 |------|------|
-| `npm run deploy` | 部署到AWS |
-| `npm run test:permissions` | 权限验证测试 |
-| `npm run data:stats` | 数据库统计 |
-| `npm run data:clear` | 清空测试数据 |
-| `npm run users:complete` | 创建完整用户数据 |
+| `npm run deploy` | Deploy to AWS |
+| `npm run test:permissions` | Permission validation suite |
+| `npm run data:stats` | Database statistics |
+| `npm run data:clear` | Remove seeded data |
+| `npm run users:complete` | Seed complete demo user set |
 
-## 🏗️ 架构设计
+## 🏗️ Architecture
 
-### DynamoDB单表设计
+### DynamoDB Single-table Layout
 ```
 PK                          SK        EntityType
 USER#{user_id}             PROFILE   User
@@ -116,48 +115,48 @@ DEVICE#{device_id}         DEVICE    Device
 PRESET#{preset_id}         PRESET    Preset
 ```
 
-### 权限验证流程
-1. API Gateway → Cognito授权
-2. Lambda函数 → 提取JWT用户信息
-3. 业务逻辑 → 基于角色权限过滤数据
+### Authorization Workflow
+1. API Gateway → Cognito authorizer validation
+2. Lambda function → Extract JWT claims
+3. Business logic → Apply role-based filters
 
-## 🐛 故障排除
+## 🐛 Troubleshooting
 
-### 常见问题
-- **部署失败**: 检查AWS凭证和SAM CLI版本
-- **认证失败**: 验证Cognito配置和JWT token
-- **权限错误**: 确认用户角色和权限设置
+### Common Issues
+- **Deployment failures**: Verify AWS credentials and SAM CLI version.
+- **Authentication failures**: Confirm Cognito configuration and JWT token validity.
+- **Authorization errors**: Ensure user roles and permissions are aligned.
 
-### 日志查看
+### Log Inspection
 ```bash
-# 查看Lambda函数日志
+# Tail Lambda function logs
 sam logs -n GetDevicesFunction --stack-name audio-device-backend-dev --tail
 
-# 查看API Gateway日志
+# Tail API Gateway logs
 aws logs tail /aws/apigateway/AudioDeviceAPI --follow
 ```
 
-## 📈 监控指标
+## 📈 Observability
 
-- **API调用数**: CloudWatch Metrics
-- **错误率**: Lambda错误统计
-- **响应时间**: X-Ray追踪
-- **数据库性能**: DynamoDB指标
-
----
-
-## 🤝 贡献指南
-
-1. Fork项目
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. 推送分支 (`git push origin feature/amazing-feature`)
-5. 打开Pull Request
-
-## 📄 许可证
-
-本项目基于MIT许可证 - 查看[LICENSE](LICENSE)文件了解详情
+- **API Call Volume**: CloudWatch metrics
+- **Error Rate**: Lambda failure counts
+- **Latency**: AWS X-Ray traces
+- **Database Health**: DynamoDB performance metrics
 
 ---
 
-*最后更新: 2025-09-23 | 版本: v1.0*
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push the branch (`git push origin feature/amazing-feature`)
+5. Open a pull request
+
+## 📄 License
+
+Distributed under the MIT License – see [LICENSE](LICENSE) for details.
+
+---
+
+*Last updated: 2025-09-23 | Version: v1.0*

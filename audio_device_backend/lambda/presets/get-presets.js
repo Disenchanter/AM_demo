@@ -1,12 +1,12 @@
 /**
- * 获取用户可访问的预设列表
- * GET /api/presets 或 GET /api/devices/{device_id}/presets
- * 
- * 权限规则：
- * - 管理员：可以查看所有预设
- * - 普通用户：只能查看自己创建的预设 + 所有公开预设
- * 
- * 如果提供了device_id参数，则只返回该设备相关的预设
+ * Fetch presets accessible to the requesting user.
+ * GET /api/presets or GET /api/devices/{device_id}/presets
+ *
+ * Access rules:
+ * - Admins can view every preset
+ * - Standard users can view their own presets plus any public presets
+ *
+ * When a device_id is supplied, results are scoped to that device.
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -23,13 +23,13 @@ exports.handler = async (event, context) => {
         const { device_id } = event.pathParameters || {};
         const userInfo = getUserInfo(event);
 
-        // device_id是可选的，如果不提供则返回所有可访问的预设
+        // device_id is optional; default to all accessible presets
         let presets = [];
 
-        // 使用统一的函数获取用户可访问的预设
+        // Fetch presets according to the shared access rules
         presets = await getPresetsForUser(device_id, userInfo.userId, userInfo.userRole);
 
-        // 转换为API响应格式并排序
+        // Normalize the Dynamo items to API responses and sort
         const responsePresets = presets
             .map(item => Preset.fromDynamoItem(item))
             .map(preset => preset.toApiResponse())
@@ -48,17 +48,17 @@ exports.handler = async (event, context) => {
     } catch (error) {
         console.error('Error:', error);
         return createResponse(500, { 
-            error: '获取预设列表失败',
+            error: 'Failed to fetch preset list',
             details: error.message 
         });
     }
 };
 
 /**
- * 获取所有预设，然后根据用户角色和权限进行过滤
+ * Retrieve every preset and filter it by access rules.
  */
 async function getPresetsForUser(deviceId, userId, userRole) {
-    // 扫描所有预设
+    // Scan for every preset entity in the table
     const scanParams = {
         TableName: process.env.AUDIO_MANAGEMENT_TABLE,
         FilterExpression: 'EntityType = :entityType',
@@ -70,30 +70,30 @@ async function getPresetsForUser(deviceId, userId, userRole) {
     const result = await dynamoDb.send(new ScanCommand(scanParams));
     const allPresets = result.Items || [];
 
-    // 根据用户角色和权限过滤预设
+    // Apply authorization checks for the requesting user
     const accessiblePresets = allPresets.filter(preset => {
-        // 如果指定了设备ID，只返回该设备的预设
+        // When a device filter is provided, limit to matching presets
         if (deviceId && preset.device_id && preset.device_id !== deviceId) {
             return false;
         }
 
-        // 管理员可以查看所有预设
+        // Administrators can see everything
         if (userRole === 'admin') {
             return true;
         }
 
-        // 普通用户的权限规则：
-        // 1. 可以查看自己创建的所有预设（公开和私人）
+        // Standard user rules:
+        // 1. They can see any preset they created (public or private)
         if (preset.created_by === userId) {
             return true;
         }
 
-        // 2. 可以查看所有公开预设
+        // 2. They can see all public presets
         if (preset.is_public === true) {
             return true;
         }
 
-        // 其他情况不允许访问
+        // Otherwise access is denied
         return false;
     });
 
@@ -101,7 +101,7 @@ async function getPresetsForUser(deviceId, userId, userRole) {
 }
 
 /**
- * 从事件中提取用户信息
+ * Extract identity details from the API Gateway event.
  */
 function getUserInfo(event) {
     const claims = event.requestContext?.authorizer?.claims || {};
@@ -114,7 +114,7 @@ function getUserInfo(event) {
 }
 
 /**
- * 创建标准化响应
+ * Helper to build consistent API Gateway responses.
  */
 function createResponse(statusCode, body) {
     return {

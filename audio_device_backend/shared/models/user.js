@@ -1,6 +1,6 @@
 /**
- * 用户数据模型 (统一架构版)
- * 使用DynamoDB单表设计存储用户信息和偏好设置
+ * User data model (shared backend abstraction).
+ * Stores profile, preferences, and stats using the DynamoDB single-table design.
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -20,7 +20,7 @@ class User {
         this.phone = data.phone || '';
         this.preferences = {
             theme: data.preferences?.theme || 'dark',
-            language: data.preferences?.language || 'zh-CN',
+            language: data.preferences?.language || 'en-US',
             notifications: {
                 email: data.preferences?.notifications?.email ?? true,
                 push: data.preferences?.notifications?.push ?? true,
@@ -58,34 +58,34 @@ class User {
     }
 
     /**
-     * 验证用户数据有效性
+     * Validate the integrity of user data.
      */
     validate() {
         const errors = [];
 
         if (!this.email || !this.isValidEmail(this.email)) {
-            errors.push('邮箱格式无效');
+            errors.push('Invalid email address format');
         }
 
         if (!this.username || this.username.length < 3) {
-            errors.push('用户名至少需要3个字符');
+            errors.push('Username must be at least 3 characters long');
         }
 
         if (!this.full_name || this.full_name.trim().length === 0) {
-            errors.push('姓名不能为空');
+            errors.push('Full name cannot be empty');
         }
 
         if (!['admin', 'user'].includes(this.role)) {
-            errors.push('用户角色必须是admin或user');
+            errors.push('Role must be either "admin" or "user"');
         }
 
         if (!['active', 'inactive', 'suspended'].includes(this.status)) {
-            errors.push('用户状态无效');
+            errors.push('Invalid user status');
         }
 
-        // 验证偏好设置
+    // Validate preference ranges
         if (this.preferences.audio.default_volume < 0 || this.preferences.audio.default_volume > 1) {
-            errors.push('默认音量必须在0-1之间');
+            errors.push('Default volume must be between 0 and 1');
         }
 
         return {
@@ -95,7 +95,7 @@ class User {
     }
 
     /**
-     * 验证邮箱格式
+     * Validate email format using a simple regex.
      */
     isValidEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -103,7 +103,7 @@ class User {
     }
 
     /**
-     * 转换为DynamoDB项目格式
+     * Convert the model to a DynamoDB item structure.
      */
     toDynamoItem() {
         return {
@@ -128,18 +128,18 @@ class User {
             updated_at: this.updated_at,
             last_active_at: this.last_active_at,
             
-            // GSI1 用于按邮箱查询
+            // GSI1 enables email-based lookups
             GSI1PK: `EMAIL#${this.email}`,
             GSI1SK: 'USER',
             
-            // GSI2 用于按角色查询
+            // GSI2 enables role-based lookups
             GSI2PK: `ROLE#${this.role}`,
             GSI2SK: this.user_id
         };
     }
 
     /**
-     * 转换为API响应格式 (公开信息)
+     * Convert to the public API response shape.
      */
     toApiResponse(includePrivate = false) {
         const publicData = {
@@ -182,7 +182,7 @@ class User {
     }
 
     /**
-     * 转换为Flutter前端格式
+     * Convert to the Flutter client data contract.
      */
     toFlutterFormat() {
         return {
@@ -202,7 +202,7 @@ class User {
     }
 
     /**
-     * 从DynamoDB项目创建用户实例
+     * Instantiate a user from a DynamoDB item.
      */
     static fromDynamoItem(item) {
         return new User({
@@ -229,7 +229,7 @@ class User {
     }
 
     /**
-     * 从 Cognito 信息创建用户
+     * Create a user model from a Cognito user payload.
      */
     static fromCognitoUser(cognitoUser, additionalData = {}) {
         const email = cognitoUser.email || cognitoUser.Attributes?.find(attr => attr.Name === 'email')?.Value;
@@ -249,7 +249,7 @@ class User {
     }
 
     /**
-     * 更新用户信息
+     * Update mutable profile fields.
      */
     update(updates) {
         const allowedUpdates = [
@@ -271,7 +271,7 @@ class User {
     }
 
     /**
-     * 更新统计信息
+     * Update user statistics.
      */
     updateStats(statUpdates) {
         this.stats = { ...this.stats, ...statUpdates };
@@ -280,7 +280,7 @@ class User {
     }
 
     /**
-     * 更新最后活跃时间
+     * Refresh the last-active timestamps.
      */
     updateLastActive() {
         this.last_active_at = new Date().toISOString();
@@ -290,21 +290,21 @@ class User {
     }
 
     /**
-     * 检查用户是否是管理员
+     * Determine whether the user is an administrator.
      */
     isAdmin() {
         return this.role === 'admin';
     }
 
     /**
-     * 检查用户是否激活
+     * Determine whether the user is active.
      */
     isActive() {
         return this.status === 'active';
     }
 
     /**
-     * 生成用户的公开简介
+     * Produce a public-friendly profile summary.
      */
     getPublicProfile() {
         return {

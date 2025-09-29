@@ -29,7 +29,7 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
     }
 
     try {
-      // 验证必要的数据
+  // Validate required data
       if (authProvider.token == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -61,7 +61,7 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success ? "设置保存成功" : "保存设置失败"),
+            content: Text(success ? "Settings saved successfully" : "Failed to save settings"),
             duration: Duration(milliseconds: success ? 1500 : 2000),
             backgroundColor: success ? Colors.green : Colors.red,
           ),
@@ -72,7 +72,7 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("保存出错: ${e.toString()}"),
+            content: Text("Failed to save: ${e.toString()}"),
             duration: const Duration(seconds: 3),
             backgroundColor: Colors.red,
           ),
@@ -97,7 +97,7 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("设备数据刷新完成"),
+          content: Text("Device data refreshed"),
           duration: Duration(seconds: 1),
           backgroundColor: Colors.green,
         ),
@@ -136,7 +136,7 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
                         ElevatedButton.icon(
                           onPressed: () => _refreshDeviceData(context),
                           icon: const Icon(Icons.refresh),
-                          label: const Text('刷新数据'),
+                          label: const Text('Refresh Data'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
                             foregroundColor: Colors.white,
@@ -146,7 +146,7 @@ class _DeviceControlScreenState extends State<DeviceControlScreen> {
                         ElevatedButton.icon(
                           onPressed: deviceProvider.isLoading ? null : () => _saveCurrentDeviceSettings(context),
                           icon: const Icon(Icons.save),
-                          label: const Text('保存设置'),
+                          label: const Text('Save Settings'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,

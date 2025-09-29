@@ -1,6 +1,6 @@
 /**
- * 预设数据模型 (统一架构版)
- * 使用DynamoDB单表设计和AudioProfile
+ * Preset data model (unified architecture version)
+ * Works with the DynamoDB single-table schema and AudioProfile helper.
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -25,36 +25,36 @@ class Preset {
     }
 
     /**
-     * 验证预设数据有效性
+     * Validate preset integrity.
      */
     validate() {
         const errors = [];
 
         if (!this.preset_name || this.preset_name.trim().length === 0) {
-            errors.push('预设名称不能为空');
+            errors.push('Preset name is required');
         }
 
         if (this.preset_name.length > 50) {
-            errors.push('预设名称不能超过50个字符');
+            errors.push('Preset name must not exceed 50 characters');
         }
 
         if (!this.created_by || this.created_by.trim().length === 0) {
-            errors.push('创建者ID不能为空');
+            errors.push('Creator ID is required');
         }
 
-        // 验证音频配置
+    // Validate audio profile details
         const profileValidation = this.profile.validate();
         if (!profileValidation.isValid) {
             errors.push(...profileValidation.errors);
         }
 
         if (!['admin', 'user'].includes(this.creator_role)) {
-            errors.push('创建者角色必须是admin或user');
+            errors.push('Creator role must be either admin or user');
         }
 
-        // 验证公开预设权限：只有管理员可以创建公开预设
+        // Only admins may create public presets
         if (this.is_public && this.creator_role !== 'admin') {
-            errors.push('只有管理员可以创建公开预设');
+            errors.push('Only admins can create public presets');
         }
 
         return {
@@ -64,49 +64,46 @@ class Preset {
     }
 
     /**
-     * 验证用户是否有权限查看此预设
-     * @param {string} userId - 当前用户ID
-     * @param {string} userRole - 当前用户角色 ('admin' 或 'user')
-     * @returns {boolean} 是否有权限查看
+     * Check whether a user can access this preset.
+     * @param {string} userId - Current user ID
+     * @param {string} userRole - Current user role ('admin' or 'user')
+     * @returns {boolean} Whether the preset is visible to the user
      */
     canUserView(userId, userRole) {
-        // 管理员可以查看所有预设
+        // Admins can access every preset
         if (userRole === 'admin') {
             return true;
         }
 
-        // 用户可以查看自己创建的预设
+        // Creators can see their own presets
         if (this.created_by === userId) {
             return true;
         }
 
-        // 用户可以查看所有公开预设
+        // Public presets are visible to all users
         if (this.is_public) {
             return true;
         }
 
-        // 其他情况不允许查看
+        // Everything else is hidden
         return false;
     }
 
     /**
-     * 验证用户是否有权限创建公开预设
-     * @param {string} userRole - 用户角色
-     * @param {boolean} isPublic - 是否要创建公开预设
-     * @returns {boolean} 是否有权限
+     * Determine if a user can create a public preset.
+     * @param {string} userRole - User role
+     * @param {boolean} isPublic - Whether the preset should be public
+     * @returns {boolean} Whether creation is allowed
      */
     static canCreatePublicPreset(userRole, isPublic) {
         if (!isPublic) {
-            return true; // 所有用户都可以创建私有预设
+            return true; // Everyone may create private presets
         }
-        return userRole === 'admin'; // 只有管理员可以创建公开预设
+        return userRole === 'admin'; // Only admins can publish presets
     }
 
     /**
-     * 转换为DynamoDB项目格式
-     */
-    /**
-     * 转换为DynamoDB项目格式
+     * Serialize to a DynamoDB item.
      */
     toDynamoItem() {
         return {
@@ -128,10 +125,7 @@ class Preset {
     }
 
     /**
-     * 转换为API响应格式
-     */
-    /**
-     * 转换为API响应格式
+     * Convert to API response payload.
      */
     toApiResponse() {
         return {
@@ -150,7 +144,7 @@ class Preset {
     }
 
     /**
-     * 转换为Flutter前端格式 (轻量级)
+     * Convert to a lightweight Flutter-friendly payload.
      */
     toFlutterFormat() {
         return {
@@ -162,10 +156,7 @@ class Preset {
     }
 
     /**
-     * 从DynamoDB项目创建预设实例
-     */
-    /**
-     * 从DynamoDB项目创建预设实例
+     * Hydrate a preset from a DynamoDB item.
      */
     static fromDynamoItem(item) {
         return new Preset({
@@ -186,7 +177,7 @@ class Preset {
     }
 
     /**
-     * 更新预设信息
+     * Update preset metadata and profile.
      */
     update(updates) {
         if (updates.preset_name) this.preset_name = updates.preset_name;
@@ -194,7 +185,7 @@ class Preset {
         if (updates.description !== undefined) this.description = updates.description;
         if (typeof updates.is_public === 'boolean') this.is_public = updates.is_public;
         
-        // 更新音频配置
+        // Update the audio profile
         if (updates.profile) {
             this.profile.update(updates.profile);
         }
@@ -204,7 +195,7 @@ class Preset {
     }
 
     /**
-     * 增加使用次数
+     * Increment usage counter.
      */
     incrementUsage() {
         this.usage_count += 1;
@@ -213,38 +204,38 @@ class Preset {
     }
 
     /**
-     * 检查用户是否可以管理此预设
+     * Determine whether the user can manage this preset.
      */
     canManage(userId, userRole) {
-        // Admin可以管理所有预设，普通用户只能管理自己创建的预设
+        // Admins manage all presets; standard users manage only their own
         return userRole === 'admin' || this.created_by === userId;
     }
 
     /**
-     * 检查用户是否可以查看此预设
+     * Determine whether the user can view this preset.
      */
     canView(userId, userRole) {
-        // 公开预设所有人可见，私有预设只有创建者和Admin可见
+        // Public presets are visible to everyone; private presets are limited
         return this.is_public || this.created_by === userId || userRole === 'admin';
     }
 
     /**
-     * 检查用户是否可以使用此预设
+     * Determine whether the user can use this preset.
      */
     canUse(userId, userRole) {
         return this.canView(userId, userRole);
     }
 
     /**
-     * 创建系统默认预设
+     * Generate the system default presets.
      */
     static getDefaultPresets() {
         const now = new Date().toISOString();
         
         return [
             new Preset({
-                preset_name: '平坦',
-                preset_category: '标准',
+                preset_name: 'Flat',
+                preset_category: 'Standard',
                 profile: {
                     volume: 0.5,
                     eq: [0, 0, 0, 0, 0],
@@ -253,13 +244,13 @@ class Preset {
                 created_by: 'system',
                 creator_role: 'admin',
                 is_public: true,
-                description: '平衡的音频设置，适合大多数内容',
+                description: 'Balanced audio settings suitable for most content',
                 created_at: now,
                 updated_at: now
             }),
             new Preset({
-                preset_name: '摇滚',
-                preset_category: '音乐',
+                preset_name: 'Rock',
+                preset_category: 'Music',
                 profile: {
                     volume: 0.65,
                     eq: [3, 2, -1, 2, 4],
@@ -268,13 +259,13 @@ class Preset {
                 created_by: 'system',
                 creator_role: 'admin',
                 is_public: true,
-                description: '增强低频和高频，适合摇滚音乐',
+                description: 'Boosts lows and highs, tailored for rock music',
                 created_at: now,
                 updated_at: now
             }),
             new Preset({
-                preset_name: '流行',
-                preset_category: '音乐',
+                preset_name: 'Pop',
+                preset_category: 'Music',
                 profile: {
                     volume: 0.6,
                     eq: [-1, 2, 3, 1, 2],
@@ -283,13 +274,13 @@ class Preset {
                 created_by: 'system',
                 creator_role: 'admin',
                 is_public: true,
-                description: '突出人声，适合流行音乐',
+                description: 'Highlights vocals, ideal for pop tracks',
                 created_at: now,
                 updated_at: now
             }),
             new Preset({
-                preset_name: '古典',
-                preset_category: '音乐',
+                preset_name: 'Classical',
+                preset_category: 'Music',
                 profile: {
                     volume: 0.55,
                     eq: [0, -2, 0, 2, 1],
@@ -298,13 +289,13 @@ class Preset {
                 created_by: 'system',
                 creator_role: 'admin',
                 is_public: true,
-                description: '自然音色，适合古典音乐',
+                description: 'Natural tonality tuned for classical music',
                 created_at: now,
                 updated_at: now
             }),
             new Preset({
-                preset_name: '电影',
-                preset_category: '娱乐',
+                preset_name: 'Cinema',
+                preset_category: 'Entertainment',
                 profile: {
                     volume: 0.7,
                     eq: [2, 0, -1, 3, 2],
@@ -313,7 +304,7 @@ class Preset {
                 created_by: 'system',
                 creator_role: 'admin',
                 is_public: true,
-                description: '增强动态范围，适合电影音频',
+                description: 'Wider dynamic range for movie soundtracks',
                 created_at: now,
                 updated_at: now
             })
@@ -321,7 +312,7 @@ class Preset {
     }
 
     /**
-     * 根据分类筛选预设
+     * Filter presets by category.
      */
     static filterByCategory(presets, category) {
         if (!category || category === 'all') {
@@ -331,7 +322,7 @@ class Preset {
     }
 
     /**
-     * 获取预设使用统计摘要
+     * Summarize preset usage statistics.
      */
     getUsageSummary() {
         return {

@@ -1,5 +1,5 @@
 /**
- * 将预设应用到设备（更新设备状态）
+ * Apply a preset to a device (updates device state).
  * POST /api/devices/{device_id}/apply-preset
  */
 
@@ -21,50 +21,50 @@ exports.handler = async (event, context) => {
         const { preset_id } = body;
 
         if (!device_id) {
-            return createResponse(400, { error: '设备ID不能为空' });
+            return createResponse(400, { error: 'Device ID is required' });
         }
 
         if (!preset_id) {
-            return createResponse(400, { error: '预设ID不能为空' });
+            return createResponse(400, { error: 'Preset ID is required' });
         }
 
-        // 检查设备是否存在且用户有权限操作
+        // Ensure the device exists and the user can operate it
         const deviceResult = await getDevice(device_id);
         if (!deviceResult.device) {
-            return createResponse(404, { error: '设备不存在' });
+            return createResponse(404, { error: 'Device not found' });
         }
 
         const device = deviceResult.device;
         if (!canOperateDevice(device, userInfo)) {
-            return createResponse(403, { error: '没有权限操作此设备' });
+            return createResponse(403, { error: 'Not authorized to operate this device' });
         }
 
-        // 获取预设信息
+        // Fetch the preset details
         const presetResult = await getPreset(preset_id);
         if (!presetResult.preset) {
-            return createResponse(404, { error: '预设不存在' });
+            return createResponse(404, { error: 'Preset not found' });
         }
 
         const preset = presetResult.preset;
         
-        // 检查预设是否适用于该设备
+        // Ensure the preset belongs to the device
         if (preset.device_id !== device_id) {
-            return createResponse(400, { error: '预设不适用于此设备' });
+            return createResponse(400, { error: 'Preset does not apply to this device' });
         }
 
-        // 检查用户是否可以查看该预设
+        // Ensure the user has permission to use the preset
         if (!preset.canView(userInfo.userId, userInfo.userRole)) {
-            return createResponse(403, { error: '没有权限使用此预设' });
+            return createResponse(403, { error: 'Not authorized to use this preset' });
         }
 
-        // 应用预设到设备（更新设备状态）
+        // Apply the preset to the device
         const updatedDevice = device.applyPreset({
             volume: preset.volume,
             eq_settings: preset.eq_settings,
             reverb: preset.reverb
         });
 
-        // 保存更新的设备状态 - 使用单表设计
+        // Persist the updated device state (single-table design)
         const updateParams = {
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             Key: { 
@@ -86,12 +86,12 @@ exports.handler = async (event, context) => {
         const updateResult = await dynamoDb.send(new UpdateCommand(updateParams));
         const finalDevice = Device.fromDynamoItem(updateResult.Attributes);
 
-        // 记录应用日志（可选，用于统计预设使用情况）
+        // Record usage logs (optional analytics)
         await logPresetUsage(device_id, preset_id, userInfo);
 
         return createResponse(200, {
             success: true,
-            message: '预设应用成功',
+            message: 'Preset applied successfully',
             data: {
                 device: finalDevice.toApiResponse(),
                 appliedPreset: {
@@ -105,14 +105,14 @@ exports.handler = async (event, context) => {
     } catch (error) {
         console.error('Error:', error);
         return createResponse(500, { 
-            error: '应用预设失败',
+            error: 'Failed to apply preset',
             details: error.message 
         });
     }
 };
 
 /**
- * 获取设备信息 - 使用单表设计
+ * Retrieve a device record (single-table design).
  */
 async function getDevice(deviceId) {
     try {
@@ -130,13 +130,13 @@ async function getDevice(deviceId) {
         };
 
     } catch (error) {
-        console.error('获取设备信息失败:', error);
+        console.error('Failed to retrieve device:', error);
         return { device: null };
     }
 }
 
 /**
- * 获取预设信息 - 使用单表设计
+ * Retrieve a preset record (single-table design).
  */
 async function getPreset(presetId) {
     try {
@@ -154,27 +154,27 @@ async function getPreset(presetId) {
         };
 
     } catch (error) {
-        console.error('获取预设信息失败:', error);
+        console.error('Failed to retrieve preset:', error);
         return { preset: null };
     }
 }
 
 /**
- * 检查用户是否可以操作设备
+ * Determine whether the user can operate the device.
  */
 function canOperateDevice(device, userInfo) {
-    // Admin可以操作所有设备，普通用户只能操作自己的设备
+    // Admins can operate any device; users can only operate their own devices
     return userInfo.userRole === 'admin' || device.owner_id === userInfo.userId;
 }
 
 /**
- * 记录预设使用日志
+ * Record preset usage analytics.
  */
 async function logPresetUsage(deviceId, presetId, userInfo) {
     try {
-        // 这里可以记录到单独的使用统计表，用于分析预设受欢迎程度
+        // Optionally write to a dedicated analytics table for popularity tracking
         const logParams = {
-            TableName: process.env.USAGE_LOGS_TABLE || 'UsageLogs', // 可选的使用日志表
+            TableName: process.env.USAGE_LOGS_TABLE || 'UsageLogs', // Optional usage log table
             Item: {
                 log_id: `${deviceId}_${presetId}_${Date.now()}`,
                 device_id: deviceId,
@@ -185,19 +185,19 @@ async function logPresetUsage(deviceId, presetId, userInfo) {
             }
         };
 
-        // 如果使用日志表不存在，跳过记录
+        // Skip recording if the usage log table is not configured
         if (process.env.USAGE_LOGS_TABLE) {
             await dynamoDb.send(new PutCommand(logParams));
         }
 
     } catch (error) {
-        // 记录日志失败不应影响主流程
-        console.warn('记录使用日志失败:', error.message);
+        // Failing to log usage should not block the main flow
+        console.warn('Failed to record usage log:', error.message);
     }
 }
 
 /**
- * 从事件中提取用户信息
+ * Extract user information from the request event.
  */
 function getUserInfo(event) {
     const claims = event.requestContext?.authorizer?.claims || {};
@@ -210,7 +210,7 @@ function getUserInfo(event) {
 }
 
 /**
- * 创建标准化响应
+ * Build a consistent HTTP response structure.
  */
 function createResponse(statusCode, body) {
     return {

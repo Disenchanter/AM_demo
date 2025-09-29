@@ -8,7 +8,7 @@ class AuthApiService {
     try {
       print("AuthApiService: Attempting login for username: $username");
       final requestBody = {
-        "email": username, // 后端期望的字段名是email
+  "email": username, // Backend expects the field name `email`
         "password": password,
       };
       print("AuthApiService: Login request body: ${jsonEncode(requestBody)}");
@@ -24,7 +24,7 @@ class AuthApiService {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        return responseData; // 直接返回后端的响应，不再额外包装
+  return responseData; // Pass through backend response without additional wrapping
       } else {
         final errorData = jsonDecode(response.body);
         return {
@@ -48,8 +48,8 @@ class AuthApiService {
       final requestBody = {
         "email": email,
         "password": password,
-        "fullName": fullName,  // 后端期望fullName字段，用户的真实姓名
-        "username": username.isNotEmpty ? username : email.split('@')[0], // username为可选字段，默认使用email前缀
+  "fullName": fullName,  // Backend expects `fullName` to store the real name
+  "username": username.isNotEmpty ? username : email.split('@')[0], // `username` is optional; default to email prefix
       };
       print("AuthApiService: Register request body: ${jsonEncode(requestBody)}");
 

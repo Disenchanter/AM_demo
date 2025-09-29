@@ -38,7 +38,7 @@ class DeviceApiService {
 
   Future<bool> updateDevice(String token, String deviceId, Device device) async {
     try {
-      // 验证输入参数
+  // Validate input parameters
       if (token.isEmpty) {
         print("DeviceApiService: Empty token provided");
         return false;
@@ -76,7 +76,7 @@ class DeviceApiService {
       print("DeviceApiService: Response body: ${response.body}");
       
       if (response.statusCode == 200) {
-        // 尝试解析响应以验证成功
+  // Attempt to parse the response to confirm success
         try {
           final responseData = jsonDecode(response.body);
           if (responseData is Map<String, dynamic> && responseData["success"] == true) {
@@ -87,7 +87,7 @@ class DeviceApiService {
           }
         } catch (e) {
           print("DeviceApiService: Could not parse response JSON, but status 200: $e");
-          // 状态码200但JSON解析失败，保守地返回true
+          // Status code 200 but JSON parsing failed; return true conservatively
           return true;
         }
       }

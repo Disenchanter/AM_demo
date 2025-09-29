@@ -1,9 +1,9 @@
 /**
- * 获取用户信息接口
+ * User profile endpoints
  * GET /api/users/profile
  * GET /api/users/{user_id}
- * 
- * 根据JWT token或用户ID获取用户信息
+ *
+ * Retrieve profile data by JWT claims or explicit user ID.
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -20,32 +20,32 @@ exports.handler = async (event, context) => {
         const userInfo = getUserInfo(event);
         const { user_id } = event.pathParameters || {};
 
-        // 如果是获取特定用户信息
+        // Fetch a specific user when an explicit ID is provided
         if (user_id) {
             return await getUserById(user_id, userInfo);
         }
 
-        // 如果是获取当前用户信息 (通过 JWT)
+        // Otherwise resolve the currently authenticated user via JWT
         if (userInfo.userId && userInfo.userId !== 'anonymous') {
             return await getCurrentUserProfile(userInfo);
         }
 
         return createResponse(401, {
-            error: '未认证',
-            message: '请先登录'
+            error: 'Unauthorized',
+            message: 'Please sign in first'
         });
 
     } catch (error) {
-        console.error('获取用户信息失败:', error);
+        console.error('Failed to fetch user profile:', error);
         return createResponse(500, {
-            error: '获取用户信息失败',
+            error: 'Failed to fetch user profile',
             details: error.message
         });
     }
 };
 
 /**
- * 根据用户ID获取用户信息
+ * Look up a user profile by user ID.
  */
 async function getUserById(userId, requestUser) {
     try {
@@ -59,13 +59,13 @@ async function getUserById(userId, requestUser) {
 
         if (!user.Item) {
             return createResponse(404, {
-                error: '用户不存在'
+                error: 'User not found'
             });
         }
 
         const userObj = User.fromDynamoItem(user.Item);
         
-        // 判断是否返回完整信息还是公开信息
+        // Decide whether to include private fields
         const isOwnProfile = requestUser.userId === userId;
         const isAdmin = requestUser.userRole === 'admin';
         const includePrivate = isOwnProfile || isAdmin;
@@ -79,21 +79,21 @@ async function getUserById(userId, requestUser) {
         });
 
     } catch (error) {
-        console.error('获取用户信息失败:', error);
+        console.error('Failed to fetch user profile:', error);
         throw error;
     }
 }
 
 /**
- * 获取当前登录用户的完整信息
+ * Retrieve the full profile for the authenticated user.
  */
 async function getCurrentUserProfile(userInfo) {
     try {
-        // 通过 Cognito ID 或用户ID 获取用户信息
+        // Resolve by Cognito user ID or fallback identifiers
         let user;
         
         if (userInfo.userId) {
-            // 直接通过用户ID获取
+            // Primary lookup by user ID
             const result = await dynamoDb.send(new GetCommand({
                 TableName: process.env.AUDIO_MANAGEMENT_TABLE,
                 Key: {
@@ -108,7 +108,7 @@ async function getCurrentUserProfile(userInfo) {
         }
 
         if (!user && userInfo.username) {
-            // 尝试通过邮箱查找
+            // Fallback lookup by email address via GSI
             const result = await dynamoDb.send(new QueryCommand({
                 TableName: process.env.AUDIO_MANAGEMENT_TABLE,
                 IndexName: 'GSI1',
@@ -125,15 +125,15 @@ async function getCurrentUserProfile(userInfo) {
 
         if (!user) {
             return createResponse(404, {
-                error: '用户记录不存在',
-                message: '用户信息未找到，可能需要重新注册'
+                error: 'User record not found',
+                message: 'We could not locate your account. Please try signing up again.'
             });
         }
 
-        // 获取用户的设备和预设统计
+        // Gather device and preset statistics for the user
         const stats = await getUserStats(user.user_id);
 
-        // 更新用户统计信息
+        // Synchronize stored statistics if they drift from latest counts
         if (stats.devices_count !== user.stats.devices_count || 
             stats.presets_count !== user.stats.presets_count) {
             await updateUserStats(user.user_id, stats);
@@ -143,7 +143,7 @@ async function getCurrentUserProfile(userInfo) {
         return createResponse(200, {
             success: true,
             data: {
-                user: user.toApiResponse(true), // 完整信息
+                user: user.toApiResponse(true), // Include private fields for the owner
                 stats: stats,
                 permissions: {
                     isAdmin: user.isAdmin(),
@@ -159,17 +159,17 @@ async function getCurrentUserProfile(userInfo) {
         });
 
     } catch (error) {
-        console.error('获取当前用户信息失败:', error);
+        console.error('Failed to fetch current user profile:', error);
         throw error;
     }
 }
 
 /**
- * 获取用户统计信息
+ * Aggregate user statistics (device count and preset count).
  */
 async function getUserStats(userId) {
     try {
-        // 查询用户的设备数量
+        // Count devices owned by the user
         const devicesResult = await dynamoDb.send(new QueryCommand({
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             IndexName: 'GSI1',
@@ -180,7 +180,7 @@ async function getUserStats(userId) {
             Select: 'COUNT'
         }));
 
-        // 查询用户创建的预设数量
+        // Count presets created by the user
         const presetsResult = await dynamoDb.send(new QueryCommand({
             TableName: process.env.AUDIO_MANAGEMENT_TABLE,
             FilterExpression: 'created_by = :userId AND begins_with(SK, :presetPrefix)',
@@ -197,7 +197,7 @@ async function getUserStats(userId) {
         };
 
     } catch (error) {
-        console.error('获取用户统计失败:', error);
+        console.error('Failed to aggregate user statistics:', error);
         return {
             devices_count: 0,
             presets_count: 0
@@ -206,7 +206,7 @@ async function getUserStats(userId) {
 }
 
 /**
- * 更新用户统计信息
+ * Persist updated user statistics in DynamoDB.
  */
 async function updateUserStats(userId, stats) {
     try {
@@ -227,12 +227,12 @@ async function updateUserStats(userId, stats) {
         }));
 
     } catch (error) {
-        console.error('更新用户统计失败:', error);
+        console.error('Failed to update user statistics:', error);
     }
 }
 
 /**
- * 从事件中提取用户信息
+ * Extract relevant user metadata from the API Gateway event.
  */
 function getUserInfo(event) {
     const claims = event.requestContext?.authorizer?.claims || {};
@@ -245,7 +245,7 @@ function getUserInfo(event) {
 }
 
 /**
- * 创建标准化响应
+ * Helper to build consistent API Gateway responses.
  */
 function createResponse(statusCode, body) {
     return {

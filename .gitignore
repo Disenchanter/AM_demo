@@ -1,38 +1,38 @@
-# AWS SAM 构建文件
+# AWS SAM build artifacts
 .aws-sam/
 *.zip
 *.jar
 
-# Flutter 相关
+# Flutter related
 audio_device_manager/build/
 audio_device_manager/.flutter-plugins
 audio_device_manager/.flutter-plugins-dependencies
 audio_device_manager/pubspec.lock
 
-# Node.js 相关
+# Node.js related
 audio_device_backend/node_modules/
 audio_device_backend/.env
 audio_device_backend/dist/
 *.log
 
-# IDE 配置
+# IDE configuration
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# 操作系统
+# Operating system
 .DS_Store
 Thumbs.db
 
-# 临时文件
+# Temporary files
 *.tmp
 *.temp
 *.bak
 *.orig
 
-# 依赖和构建产物
+# Dependencies and build outputs
 **/node_modules/
 **/build/
 **/dist/

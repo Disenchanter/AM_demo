@@ -1,56 +1,56 @@
-# 音频设备管理系统 API 文档
+# Audio Device Management System API Documentation
 
-## 📋 目录
-- [API概述](#api概述)
-- [认证授权](#认证授权)
-- [用户认证接口](#用户认证接口)
-- [设备管理接口](#设备管理接口)
-- [音频预设接口](#音频预设接口)
-- [用户资料接口](#用户资料接口)
-- [数据模型](#数据模型)
-- [错误码说明](#错误码说明)
+## 📋 Table of Contents
+- [API Overview](#api-overview)
+- [Authentication](#authentication)
+- [User Authentication Endpoints](#user-authentication-endpoints)
+- [Device Management Endpoints](#device-management-endpoints)
+- [Audio Preset Endpoints](#audio-preset-endpoints)
+- [User Profile Endpoints](#user-profile-endpoints)
+- [Data Models](#data-models)
+- [Error Codes](#error-codes)
 
 ---
 
-## API概述
+## API Overview
 
-### 基础信息
+### Core Information
 - **Base URL**: `https://f0xsnhnui6.execute-api.us-east-1.amazonaws.com/dev/api`
-- **协议**: HTTPS
-- **数据格式**: JSON
-- **认证方式**: JWT Bearer Token (AWS Cognito)
+- **Protocol**: HTTPS
+- **Data format**: JSON
+- **Authentication**: JWT Bearer token (AWS Cognito)
 
-### 权限模型
-- **管理员 (admin)**: 可查看所有数据，可创建公开预设
-- **普通用户 (user)**: 只能查看自己的数据，可创建私有预设，可查看公开预设
+### Authorization Model
+- **Administrator (admin)**: Full read access to all resources and can create public presets
+- **Standard User (user)**: Limited to personal resources, can create private presets, and can view public presets
 
 ---
 
-## 认证授权
+## Authentication
 
-### 认证头格式
+### Authorization Header Format
 ```
 Authorization: Bearer <JWT_TOKEN>
 ```
 
-### 获取Token
-通过 `/api/auth/login` 接口获取JWT token
+### Obtaining Tokens
+Call `/api/auth/login` to receive a JWT token.
 
-### 权限验证
-大部分接口需要JWT认证，除了：
-- `POST /api/auth/login` - 登录接口
-- `POST /api/auth/register` - 注册接口
+### Endpoints Without Authentication
+All endpoints require a valid JWT unless explicitly noted below:
+- `POST /api/auth/login` – Sign in
+- `POST /api/auth/register` – Register
 
 ---
 
-## 用户认证接口
+## User Authentication Endpoints
 
-### 用户登录
+### Sign In
 ```http
 POST /api/auth/login
 ```
 
-**请求体**:
+**Request Body**:
 ```json
 {
   "email": "admin@demo.com",
@@ -58,17 +58,17 @@ POST /api/auth/login
 }
 ```
 
-**响应 200**:
+**Response 200**:
 ```json
 {
   "success": true,
-  "message": "登录成功",
+  "message": "Login successful",
   "data": {
     "user": {
       "userId": "efb542c2-569b-45d1-80f0-0b5a85d340ff",
       "email": "admin@demo.com",
       "username": "admin",
-      "fullName": "系统管理员",
+  "fullName": "System Administrator",
       "role": "admin",
       "emailVerified": true,
       "status": "active"
@@ -86,34 +86,34 @@ POST /api/auth/login
 }
 ```
 
-**错误 401**:
+**Error 401**:
 ```json
 {
-  "error": "登录失败",
-  "message": "邮箱或密码错误"
+  "error": "Login failed",
+  "message": "Incorrect email or password"
 }
 ```
 
-### 用户注册
+### Register
 ```http
 POST /api/auth/register
 ```
 
-**请求体**:
+**Request Body**:
 ```json
 {
   "email": "newuser@demo.com",
   "password": "UserPass123!",
-  "fullName": "新用户",
+  "fullName": "New User",
   "username": "newuser"
 }
 ```
 
-**响应 201**:
+**Response 201**:
 ```json
 {
   "success": true,
-  "message": "用户注册成功",
+  "message": "User registered successfully",
   "data": {
     "userId": "new-user-id-123",
     "email": "newuser@demo.com",
@@ -124,15 +124,15 @@ POST /api/auth/register
 
 ---
 
-## 设备管理接口
+## Device Management Endpoints
 
-### 获取设备列表
+### List Devices
 ```http
 GET /api/devices
 Authorization: Bearer <token>
 ```
 
-**响应 200**:
+**Response 200**:
 ```json
 {
   "success": true,
@@ -140,8 +140,8 @@ Authorization: Bearer <token>
     "devices": [
       {
         "deviceId": "937c612c-dabe-4b3f-8db4-64e4339f9d8f",
-        "deviceName": "我的音频设备",
-        "deviceModel": "Demo Audio Device v2.0",
+  "deviceName": "My Audio Device",
+  "deviceModel": "Demo Audio Device v2.0",
         "ownerId": "user-id-123",
         "isOnline": true,
         "lastSeen": "2025-09-23T10:30:15.123Z",
@@ -162,13 +162,13 @@ Authorization: Bearer <token>
 }
 ```
 
-### 更新设备状态
+### Update Device State
 ```http
 PUT /api/devices/{device_id}
 Authorization: Bearer <token>
 ```
 
-**请求体**:
+**Request Body**:
 ```json
 {
   "volume": 0.8,
@@ -177,11 +177,11 @@ Authorization: Bearer <token>
 }
 ```
 
-**响应 200**:
+**Response 200**:
 ```json
 {
   "success": true,
-  "message": "设备状态更新成功",
+  "message": "Device state updated successfully",
   "data": {
     "deviceId": "937c612c-dabe-4b3f-8db4-64e4339f9d8f",
     "state": {
@@ -197,20 +197,20 @@ Authorization: Bearer <token>
 
 ---
 
-## 音频预设接口
+## Audio Preset Endpoints
 
-### 获取预设列表
+### List Presets
 ```http
 GET /api/presets
 Authorization: Bearer <token>
 ```
-或
+or
 ```http
 GET /api/devices/{device_id}/presets
 Authorization: Bearer <token>
 ```
 
-**响应 200**:
+**Response 200**:
 ```json
 {
   "success": true,
@@ -219,9 +219,9 @@ Authorization: Bearer <token>
     "presets": [
       {
         "presetId": "542379c8-5563-42a7-9d10-566269053a27",
-        "presetName": "古典音乐",
-        "category": "music",
-        "description": "古典音乐专用音频配置",
+  "presetName": "Classical Music",
+  "category": "music",
+  "description": "Preset tuned for classical music",
         "isPublic": false,
         "createdBy": "user-id-123",
         "creatorRole": "user",
@@ -241,18 +241,18 @@ Authorization: Bearer <token>
 }
 ```
 
-### 创建预设
+### Create Preset
 ```http
 POST /api/presets
 Authorization: Bearer <token>
 ```
 
-**请求体**:
+**Request Body**:
 ```json
 {
-  "presetName": "我的自定义预设",
+  "presetName": "My Custom Preset",
   "category": "custom",
-  "description": "个人定制音频预设",
+  "description": "Personalized audio preset",
   "deviceId": "937c612c-dabe-4b3f-8db4-64e4339f9d8f",
   "isPublic": false,
   "profile": {
@@ -263,14 +263,14 @@ Authorization: Bearer <token>
 }
 ```
 
-**响应 201**:
+**Response 201**:
 ```json
 {
   "success": true,
-  "message": "预设创建成功",
+  "message": "Preset created successfully",
   "data": {
-    "presetId": "new-preset-id-456",
-    "presetName": "我的自定义预设",
+  "presetId": "new-preset-id-456",
+  "presetName": "My Custom Preset",
     "category": "custom",
     "isPublic": false,
     "createdBy": "user-id-123",
@@ -279,24 +279,24 @@ Authorization: Bearer <token>
 }
 ```
 
-### 应用预设到设备
+### Apply Preset to Device
 ```http
 POST /api/devices/{device_id}/apply-preset
 Authorization: Bearer <token>
 ```
 
-**请求体**:
+**Request Body**:
 ```json
 {
   "presetId": "542379c8-5563-42a7-9d10-566269053a27"
 }
 ```
 
-**响应 200**:
+**Response 200**:
 ```json
 {
   "success": true,
-  "message": "预设应用成功",
+  "message": "Preset applied successfully",
   "data": {
     "deviceId": "937c612c-dabe-4b3f-8db4-64e4339f9d8f",
     "presetId": "542379c8-5563-42a7-9d10-566269053a27",
@@ -313,20 +313,20 @@ Authorization: Bearer <token>
 
 ---
 
-## 用户资料接口
+## User Profile Endpoints
 
-### 获取当前用户资料
+### Get Current User Profile
 ```http
 GET /api/users/profile
 Authorization: Bearer <token>
 ```
-或
+or
 ```http
 GET /api/auth/profile
 Authorization: Bearer <token>
 ```
 
-**响应 200**:
+**Response 200**:
 ```json
 {
   "success": true,
@@ -334,15 +334,15 @@ Authorization: Bearer <token>
     "user": {
       "userId": "efb542c2-569b-45d1-80f0-0b5a85d340ff",
       "email": "admin@demo.com",
-      "username": "admin",
-      "fullName": "系统管理员",
+  "username": "admin",
+  "fullName": "System Administrator",
       "role": "admin",
       "avatarUrl": null,
       "emailVerified": true,
       "status": "active",
       "preferences": {
         "theme": "dark",
-        "language": "zh-CN",
+  "language": "en-US",
         "notifications": {
           "email": true,
           "push": true,
@@ -379,13 +379,13 @@ Authorization: Bearer <token>
 }
 ```
 
-### 获取指定用户资料
+### Get Specific User Profile
 ```http
 GET /api/users/{user_id}
 Authorization: Bearer <token>
 ```
 
-**响应 200** (仅管理员可访问其他用户资料):
+**Response 200** (administrators only):
 ```json
 {
   "success": true,
@@ -397,8 +397,8 @@ Authorization: Bearer <token>
       "role": "user",
       "status": "active",
       "publicProfile": {
-        "bio": "音乐爱好者",
-        "location": "北京",
+  "bio": "Music enthusiast",
+  "location": "Beijing",
         "joinDate": "2025-09-21T10:56:14.382Z"
       },
       "stats": {
@@ -412,117 +412,117 @@ Authorization: Bearer <token>
 
 ---
 
-## 数据模型
+## Data Models
 
-### 音频配置 (AudioProfile)
+### Audio Profile (AudioProfile)
 ```json
 {
-  "volume": 0.75,        // 音量 (0.0-1.0)
-  "eq": [0, 2, -1, 3, 0], // 5段均衡器 (-12到+12 dB)
-  "reverb": 0.3,         // 混响效果 (0.0-1.0)
-  "lastPresetId": "preset-123", // 最后应用的预设ID
-  "syncVersion": 2,      // 同步版本号
+  "volume": 0.75,        // Volume (0.0-1.0)
+  "eq": [0, 2, -1, 3, 0], // Five-band EQ (-12 to +12 dB)
+  "reverb": 0.3,         // Reverb (0.0-1.0)
+  "lastPresetId": "preset-123", // Most recently applied preset ID
+  "syncVersion": 2,      // Synchronization version
   "updatedAt": "2025-09-23T10:30:15.123Z"
 }
 ```
 
-### 预设分类
-- `music` - 音乐
-- `gaming` - 游戏
-- `movie` - 电影
-- `voice` - 语音
-- `custom` - 自定义
+### Preset Categories
+- `music` - Music
+- `gaming` - Gaming
+- `movie` - Movies
+- `voice` - Voice presets
+- `custom` - Custom user-defined
 
-### 用户角色
-- `admin` - 管理员
-- `user` - 普通用户
+### User Roles
+- `admin` - Administrator
+- `user` - Standard user
 
-### 账户状态
-- `active` - 活跃
-- `inactive` - 非活跃
-- `suspended` - 暂停
+### Account Status Values
+- `active` - Active
+- `inactive` - Inactive
+- `suspended` - Suspended
 
 ---
 
-## 错误码说明
+## Error Codes
 
-### HTTP状态码
+### HTTP Status Codes
 
-| 状态码 | 描述 | 说明 |
-|--------|------|------|
-| 200 | OK | 请求成功 |
-| 201 | Created | 资源创建成功 |
-| 400 | Bad Request | 请求参数错误 |
-| 401 | Unauthorized | 认证失败或token无效 |
-| 403 | Forbidden | 权限不足 |
-| 404 | Not Found | 资源不存在 |
-| 500 | Internal Server Error | 服务器内部错误 |
+| Status | Description | Details |
+|--------|-------------|---------|
+| 200 | OK | Request succeeded |
+| 201 | Created | Resource created successfully |
+| 400 | Bad Request | Invalid request parameters |
+| 401 | Unauthorized | Authentication failed or token invalid |
+| 403 | Forbidden | Insufficient permissions |
+| 404 | Not Found | Resource not found |
+| 500 | Internal Server Error | Unexpected server error |
 
-### 错误响应格式
+### Error Response Structure
 ```json
 {
-  "error": "错误类型",
-  "message": "详细错误描述",
-  "details": "技术细节（可选）",
-  "code": "ERROR_CODE（可选）"
+  "error": "Error type",
+  "message": "Detailed explanation",
+  "details": "Technical details (optional)",
+  "code": "ERROR_CODE (optional)"
 }
 ```
 
-### 常见错误
+### Common Errors
 
-#### 认证错误
+#### Authentication Failure
 ```json
 {
-  "error": "登录失败",
-  "message": "邮箱或密码错误"
+  "error": "Login failed",
+  "message": "Incorrect email or password"
 }
 ```
 
-#### 权限错误
+#### Authorization Error
 ```json
 {
-  "error": "权限不足",
-  "message": "只有管理员可以创建公开预设"
+  "error": "Forbidden",
+  "message": "Only administrators can create public presets"
 }
 ```
 
-#### 资源不存在
+#### Resource Not Found
 ```json
 {
-  "error": "资源不存在",
-  "message": "指定的设备不存在"
+  "error": "Not Found",
+  "message": "The requested device does not exist"
 }
 ```
 
-#### 参数验证错误
+#### Validation Error
 ```json
 {
-  "error": "参数验证失败",
-  "message": "音量值必须在0到1之间",
+  "error": "Validation failed",
+  "message": "Volume must be between 0 and 1",
   "details": "volume: 1.5 is not valid"
 }
 ```
 
 ---
 
-## 演示账户
+## Demo Accounts
 
-用于测试的演示账户：
+Use the following credentials for testing:
 
-| 角色 | 邮箱 | 密码 | 权限说明 |
-|------|------|------|----------|
-| **管理员** | admin@demo.com | AdminPass123! | 查看所有数据，创建公开预设 |
-| **普通用户** | alice@demo.com | UserPass123! | 查看自己的数据，创建私有预设 |
-| **普通用户** | bob@demo.com | UserPass123! | 查看自己的数据，创建私有预设 |
-| **普通用户** | carol@demo.com | UserPass123! | 查看自己的数据，创建私有预设 |
+| Role | Email | Password | Permissions |
+|------|-------|----------|-------------|
+| **Administrator** | admin@demo.com | AdminPass123! | Access to all resources, can create public presets |
+| **User** | alice@demo.com | UserPass123! | Access to personal resources, can create private presets |
+| **User** | bob@demo.com | UserPass123! | Access to personal resources, can create private presets |
+| **User** | carol@demo.com | UserPass123! | Access to personal resources, can create private presets |
 
 ---
 
-## 使用示例
+## Usage Examples
 
-### 完整的工作流程
+### End-to-End Workflow
 
-1. **用户登录**
+1. **User Login**
 ```bash
 curl -X POST \
   https://f0xsnhnui6.execute-api.us-east-1.amazonaws.com/dev/api/auth/login \
@@ -530,23 +530,23 @@ curl -X POST \
   -d '{"email":"admin@demo.com","password":"AdminPass123!"}'
 ```
 
-2. **获取设备列表**
+2. **Fetch Device List**
 ```bash
 curl -X GET \
   https://f0xsnhnui6.execute-api.us-east-1.amazonaws.com/dev/api/devices \
   -H 'Authorization: Bearer <your-jwt-token>'
 ```
 
-3. **创建音频预设**
+3. **Create an Audio Preset**
 ```bash
 curl -X POST \
   https://f0xsnhnui6.execute-api.us-east-1.amazonaws.com/dev/api/presets \
   -H 'Authorization: Bearer <your-jwt-token>' \
   -H 'Content-Type: application/json' \
   -d '{
-    "presetName": "我的预设",
+    "presetName": "My Preset",
     "category": "music",
-    "description": "个人定制",
+    "description": "Personal customization",
     "deviceId": "device-id-here",
     "isPublic": false,
     "profile": {
@@ -557,7 +557,7 @@ curl -X POST \
   }'
 ```
 
-4. **应用预设到设备**
+4. **Apply the Preset to a Device**
 ```bash
 curl -X POST \
   https://f0xsnhnui6.execute-api.us-east-1.amazonaws.com/dev/api/devices/{device_id}/apply-preset \
@@ -568,4 +568,4 @@ curl -X POST \
 
 ---
 
-*文档版本: v1.0 | 最后更新: 2025-09-23*
+*Documentation Version: v1.0 | Last Updated: 2025-09-23*

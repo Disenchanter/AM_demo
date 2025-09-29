@@ -1,26 +1,26 @@
-# YAML Lint 配置文件
-# 用于忽略 AWS SAM 构建文件的 lint 错误
+# YAML Lint configuration
+# Suppresses lint warnings for AWS SAM build artifacts
 
 rules:
-  # 关闭行长度检查（AWS SAM 模板通常很长）
+  # Disable line-length check (SAM templates are often long)
   line-length: disable
   
-  # 关闭缩进检查（SAM 生成的文件可能格式不一致）
+  # Disable indentation check (SAM output can differ in formatting)
   indentation: disable
   
-  # 关闭注释检查
+  # Disable comment check
   comments: disable
   
-  # 关闭文档开始检查
+  # Disable document start check
   document-start: disable
   
-  # 关闭键值对检查
+  # Disable key-value consistency check
   key-value-consistent: disable
   
-  # 关闭空行检查
+  # Disable empty-line check
   empty-lines: disable
 
-# 忽略特定文件和目录
+# Ignore generated files and directories
 ignore: |
   .aws-sam/build/
   **/build/

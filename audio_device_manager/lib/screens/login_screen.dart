@@ -13,9 +13,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _fullNameController = TextEditingController(); // 新增真实姓名控制器
+  final _fullNameController = TextEditingController(); // Controller for full name in registration mode
   final _formKey = GlobalKey<FormState>();
-  bool _isLoginMode = true; // true为登录模式，false为注册模式
+  bool _isLoginMode = true; // true = login mode, false = registration mode
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
@@ -41,20 +41,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
       final success = await authProvider.register(
-        _usernameController.text,  // username (可选，显示名称)
-        _emailController.text,     // email (必填，登录凭证)
-        _passwordController.text,  // password
-        _fullNameController.text,  // fullName (必填，真实姓名)
+  _usernameController.text,  // Optional display name
+  _emailController.text,     // Required email credential
+  _passwordController.text,  // Password
+  _fullNameController.text,  // Required full name
       );
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("注册成功！请登录"),
+            content: Text("Registration successful! Please sign in."),
             backgroundColor: Colors.green,
           ),
         );
-        // 注册成功后切换到登录模式
+        // Switch back to login mode after successful registration
         setState(() {
           _isLoginMode = true;
         });
@@ -88,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isLoginMode ? "登录" : "注册"),
+  title: Text(_isLoginMode ? "Sign In" : "Register"),
         centerTitle: true,
       ),
       body: Consumer<AuthProvider>(
@@ -106,62 +106,62 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
                   
-                  // 用户名输入框（注册模式：可选显示名称，登录模式：必填登录凭证）
+                  // Username field (required for sign in, optional display name when registering)
                   TextFormField(
                     controller: _usernameController,
                     decoration: InputDecoration(
-                      labelText: _isLoginMode ? "邮箱" : "用户名（可选）",
+                      labelText: _isLoginMode ? "Email" : "Username (optional)",
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.person),
-                      helperText: _isLoginMode ? null : "显示名称，留空则使用邮箱前缀",
+                      helperText: _isLoginMode ? null : "Display name; defaults to the email prefix if blank",
                     ),
                     validator: (value) {
                       if (_isLoginMode && (value == null || value.isEmpty)) {
-                        return "请输入邮箱";
+                        return "Please enter your email";
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
 
-                  // 邮箱输入框（仅注册模式显示）
+                  // Email field (registration only)
                   if (!_isLoginMode) ...[
                     TextFormField(
                       controller: _emailController,
                       decoration: const InputDecoration(
-                        labelText: "邮箱 *",
+                        labelText: "Email *",
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.email),
-                        helperText: "用作登录凭证",
+                        helperText: "Used as the login credential",
                       ),
                       keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return "请输入邮箱";
+                          return "Please enter your email";
                         }
                         if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                          return "请输入有效的邮箱地址";
+                          return "Please enter a valid email address";
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
 
-                    // 真实姓名输入框（仅注册模式显示）
+                    // Full-name field (registration only)
                     TextFormField(
                       controller: _fullNameController,
                       decoration: const InputDecoration(
-                        labelText: "真实姓名 *",
+                        labelText: "Full name *",
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.badge),
-                        helperText: "用于账户身份识别",
+                        helperText: "Used for account identification",
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return "请输入真实姓名";
+                          return "Please enter your full name";
                         }
                         if (value.trim().length < 2) {
-                          return "姓名至少需要2个字符";
+                          return "Full name must be at least 2 characters";
                         }
                         return null;
                       },
@@ -169,28 +169,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // 密码输入框
+                  // Password field
                   TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
-                      labelText: "密码",
+                      labelText: "Password",
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.lock),
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return "请输入密码";
+                        return "Please enter your password";
                       }
                       if (!_isLoginMode && value.length < 8) {
-                        return "密码至少需要8个字符";
+                        return "Password must be at least 8 characters";
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 24),
 
-                  // 主要操作按钮（登录或注册）
+                  // Primary action button (sign in or register)
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -206,25 +206,25 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: authProvider.isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : Text(
-                              _isLoginMode ? "登录" : "注册",
+                              _isLoginMode ? "Sign In" : "Register",
                               style: const TextStyle(fontSize: 16),
                             ),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // 模式切换按钮
+                  // Mode toggle prompt
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _isLoginMode ? "还没有账户？" : "已有账户？",
+                        _isLoginMode ? "Don't have an account?" : "Already have an account?",
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                       TextButton(
                         onPressed: _toggleMode,
                         child: Text(
-                          _isLoginMode ? "立即注册" : "立即登录",
+                          _isLoginMode ? "Create one" : "Sign in",
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                           ),

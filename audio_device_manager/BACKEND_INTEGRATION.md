@@ -1,129 +1,129 @@
-# Flutter 前端与 AWS 后端集成指南
+# Flutter Frontend and AWS Backend Integration Guide
 
-## 概述
+## Overview
 
-此 Flutter 应用现已集成与 AWS 后端 API 的连接功能。应用支持用户认证、设备管理和预设管理等功能。
+This Flutter app now connects to the AWS backend APIs. It supports user authentication, device management, and preset management.
 
-## 配置步骤
+## Configuration Steps
 
-### 1. 配置 API 端点
+### 1. Configure API Endpoints
 
-编辑 `lib/config/api_config.dart` 文件，替换 `baseUrl` 为实际的 API Gateway URL：
+Update `lib/config/api_config.dart` and replace `baseUrl` with the actual API Gateway URL:
 
 ```dart
 class ApiConfig {
-  // 替换为实际的API Gateway URL
+  // Replace with your API Gateway URL
   static const String baseUrl = 'https://your-api-gateway-id.execute-api.us-east-1.amazonaws.com/dev';
-  // ... 其他配置
+  // ... additional configuration
 }
 ```
 
-### 2. 获取 API Gateway URL
+### 2. Retrieve the API Gateway URL
 
-从 AWS 控制台或 CloudFormation 输出中获取部署的 API Gateway URL。URL 格式通常为：
+Grab the deployed API Gateway URL from the AWS Console or the CloudFormation stack output. The format generally looks like:
 ```
 https://{api-id}.execute-api.{region}.amazonaws.com/{stage}
 ```
 
-### 3. 测试连接
+### 3. Test the Connection
 
-1. 启动 Flutter 应用
-2. 进入"API 测试"页面
-3. 点击各种测试按钮来验证连接
+1. Launch the Flutter application.
+2. Navigate to the "API Tests" screen.
+3. Tap the various test buttons to validate connectivity.
 
-## API 端点映射
+## API Endpoint Mapping
 
-| 功能 | HTTP 方法 | 端点 | 描述 |
-|------|-----------|------|------|
-| 用户登录 | POST | `/api/auth/login` | 用户认证 |
-| 用户注册 | POST | `/api/auth/register` | 新用户注册 |
-| 用户资料 | GET | `/api/auth/profile` | 获取用户信息 |
-| 获取设备 | GET | `/api/devices` | 获取设备列表 |
-| 更新设备 | PUT | `/api/devices/{id}` | 更新设备状态 |
-| 获取预设 | GET | `/api/presets` | 获取预设列表 |
-| 创建预设 | POST | `/api/devices/{id}/presets` | 创建新预设 |
-| 应用预设 | POST | `/api/devices/{id}/apply-preset` | 应用预设到设备 |
+| Feature | HTTP Method | Endpoint | Description |
+|---------|-------------|----------|-------------|
+| User login | POST | `/api/auth/login` | Authenticate a user |
+| User registration | POST | `/api/auth/register` | Register a new user |
+| User profile | GET | `/api/auth/profile` | Fetch profile details |
+| List devices | GET | `/api/devices` | Retrieve device list |
+| Update device | PUT | `/api/devices/{id}` | Update device state |
+| List presets | GET | `/api/presets` | Retrieve preset list |
+| Create preset | POST | `/api/devices/{id}/presets` | Create a preset |
+| Apply preset | POST | `/api/devices/{id}/apply-preset` | Apply preset to a device |
 
-## 数据模型
+## Data Models
 
 ### Device
-- `device_id`: 设备唯一标识
-- `device_name`: 设备名称
-- `state.volume`: 音量 (0.0-1.0)
-- `state.eq`: 5频段均衡器数组
-- `state.reverb`: 混响值 (0.0-1.0)
-- `is_online`: 设备在线状态
-- `last_seen`: 最后在线时间
+- `device_id`: Unique identifier for the device
+- `device_name`: Human-readable name
+- `state.volume`: Volume (0.0-1.0)
+- `state.eq`: Five-band EQ array
+- `state.reverb`: Reverb value (0.0-1.0)
+- `is_online`: Online/offline status
+- `last_seen`: Last contact timestamp
 
 ### Preset
-- `preset_id`: 预设唯一标识
-- `preset_name`: 预设名称
-- `audio_profile`: 音频配置文件
-- `is_public`: 是否公开预设
-- `created_by`: 创建者ID
+- `preset_id`: Unique preset identifier
+- `preset_name`: Preset name
+- `audio_profile`: Audio profile payload
+- `is_public`: Whether the preset is public
+- `created_by`: ID of the creator
 
 ### User
-- `user_id`: 用户唯一标识
-- `username`: 用户名
-- `email`: 邮箱地址
+- `user_id`: Unique user identifier
+- `username`: Display name
+- `email`: Email address
 
-## 错误处理
+## Error Handling
 
-应用包含完整的错误处理机制：
+The app includes comprehensive error handling:
 
-1. **网络错误**: 显示网络连接失败信息
-2. **认证错误**: 显示登录失败或令牌过期信息
-3. **API错误**: 显示具体的 API 错误信息
-4. **数据格式错误**: 处理响应数据格式问题
+1. **Network errors**: Notifies users of connectivity issues.
+2. **Authentication errors**: Surfaces login failures or expired tokens.
+3. **API errors**: Displays error details returned by the API.
+4. **Data format errors**: Guards against malformed responses.
 
-## 开发调试
+## Development and Debugging
 
-### 启用调试模式
+### Enable Debug Logging
 
-在 `api_client.dart` 中添加请求日志：
-
-```dart
-print('请求URL: $url');
-print('请求头: $requestHeaders');
-print('请求体: ${body != null ? jsonEncode(body) : 'null'}');
-print('响应状态: ${response.statusCode}');
-print('响应体: ${response.body}');
-```
-
-### 本地测试
-
-如果需要连接本地后端服务，可以设置：
+Add request logging in `api_client.dart`:
 
 ```dart
-static const String baseUrl = 'http://localhost:3000'; // 本地开发服务器
+print('Request URL: $url');
+print('Request headers: $requestHeaders');
+print('Request body: ${body != null ? jsonEncode(body) : 'null'}');
+print('Response status: ${response.statusCode}');
+print('Response body: ${response.body}');
 ```
 
-注意：iOS 模拟器可能需要特殊配置才能访问本地服务器。
+### Local Testing
 
-## 安全注意事项
+To target a locally running backend, set:
 
-1. **令牌存储**: 认证令牌使用 SharedPreferences 安全存储
-2. **HTTPS**: 生产环境必须使用 HTTPS 端点
-3. **输入验证**: 客户端包含基本输入验证
-4. **错误信息**: 不暴露敏感的系统信息
+```dart
+static const String baseUrl = 'http://localhost:3000'; // Local development server
+```
 
-## 故障排除
+Note: The iOS simulator may need additional configuration to reach localhost.
 
-### 常见问题
+## Security Considerations
 
-1. **连接超时**: 检查网络连接和 API Gateway 状态
-2. **认证失败**: 验证用户凭证和 Cognito 配置
-3. **CORS 错误**: 确保 API Gateway 正确配置 CORS
-4. **数据格式错误**: 检查前后端数据模型的一致性
+1. **Token storage**: Authentication tokens are stored securely with SharedPreferences.
+2. **HTTPS**: Production environments must use HTTPS endpoints.
+3. **Input validation**: The client applies basic validation before sending requests.
+4. **Error messaging**: Avoid leaking sensitive system details.
 
-### 日志查看
+## Troubleshooting
 
-查看 Flutter 控制台输出和 AWS CloudWatch 日志来诊断问题。
+### Common Issues
 
-## 下一步开发
+1. **Connection timeout**: Check network connectivity and API Gateway health.
+2. **Authentication failure**: Confirm user credentials and Cognito configuration.
+3. **CORS errors**: Ensure API Gateway has proper CORS settings.
+4. **Data format mismatch**: Validate that frontend and backend models align.
 
-1. 添加注册页面
-2. 实现设备实时状态同步
-3. 添加更多音频效果参数
-4. 实现离线模式支持
-5. 添加设备组管理功能
+### Log Inspection
+
+Inspect the Flutter console logs and AWS CloudWatch logs to diagnose issues.
+
+## Next Steps
+
+1. Add a registration flow in the UI.
+2. Implement real-time device status updates.
+3. Introduce additional audio effect parameters.
+4. Support offline usage.
+5. Provide device grouping capabilities.

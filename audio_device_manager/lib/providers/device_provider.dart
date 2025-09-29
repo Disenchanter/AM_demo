@@ -24,13 +24,17 @@ class DeviceProvider with ChangeNotifier {
     _currentToken = token;
 
     try {
-      _devices = await _deviceApiService.getDevices(token);
+      final fetchedDevices = await _deviceApiService.getDevices(token);
+      _devices = _deduplicateDevices(fetchedDevices);
       if (_devices.isNotEmpty && _selectedDevice == null) {
         _selectedDevice = _devices.first;
       }
+      if (_selectedDevice != null) {
+        _selectedDevice = _findDeviceById(_selectedDevice!.id);
+      }
       
-      // 不再自动启动定期刷新
-      // _startPeriodicRefresh();
+  // No longer start periodic refresh automatically
+  // _startPeriodicRefresh();
     } catch (e) {
       _errorMessage = "Failed to load devices: $e";
     }
@@ -38,7 +42,7 @@ class DeviceProvider with ChangeNotifier {
     _setLoading(false);
   }
 
-  // 手动刷新设备数据
+  // Manually trigger a refresh of device data
   Future<void> refreshDevices() async {
     if (_currentToken == null) return;
     
@@ -47,18 +51,22 @@ class DeviceProvider with ChangeNotifier {
 
     try {
       final updatedDevices = await _deviceApiService.getDevices(_currentToken!);
-      _devices = updatedDevices;
-      
-      // 如果选中的设备存在于更新后的列表中，更新它
+      _devices = _deduplicateDevices(updatedDevices);
+
       if (_selectedDevice != null) {
-        final updatedSelected = updatedDevices.firstWhere(
-          (device) => device.id == _selectedDevice!.id,
-          orElse: () => _selectedDevice!,
-        );
-        _selectedDevice = updatedSelected;
+        final matched = _findDeviceById(_selectedDevice!.id);
+        if (matched != null) {
+          _selectedDevice = matched;
+        } else if (_devices.isNotEmpty) {
+          _selectedDevice = _devices.first;
+        } else {
+          _selectedDevice = null;
+        }
+      } else if (_devices.isNotEmpty) {
+        _selectedDevice = _devices.first;
       }
     } catch (e) {
-      _errorMessage = "刷新设备数据失败: $e";
+  _errorMessage = "Failed to refresh devices: $e";
     }
 
     _setLoading(false);
@@ -74,7 +82,7 @@ class DeviceProvider with ChangeNotifier {
     _errorMessage = "";
 
     try {
-      // 验证输入参数
+  // Validate incoming parameters
       if (token.isEmpty) {
         _errorMessage = "Invalid token";
         print("DeviceProvider: Empty token provided");
@@ -140,6 +148,25 @@ class DeviceProvider with ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  List<Device> _deduplicateDevices(List<Device> devices) {
+    final uniqueDevices = <String, Device>{};
+    for (final device in devices) {
+      if (device.id.isNotEmpty) {
+        uniqueDevices[device.id] = device;
+      }
+    }
+    return uniqueDevices.values.toList();
+  }
+
+  Device? _findDeviceById(String id) {
+    for (final device in _devices) {
+      if (device.id == id) {
+        return device;
+      }
+    }
+    return null;
   }
 
   @override
